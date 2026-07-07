@@ -32,8 +32,8 @@ export default function Step3Done({ onNew }) {
 
   async function saveToSupabase(blob) {
     const dateStr = data.signedAt?.split('T')[0].replace(/-/g, '') || 'unknown';
-    const fileName = `계약서_${data.storeName}_${dateStr}.pdf`;
-    const path = `contracts/${fileName}`;
+    const ts = Date.now();
+    const path = `contracts/${dateStr}_${ts}.pdf`;
 
     const { error: uploadErr } = await supabase.storage
       .from('contracts')
@@ -70,18 +70,15 @@ export default function Step3Done({ onNew }) {
     const fileName = `계약서_${data.storeName}_${dateStr}.pdf`;
     const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-    if (navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: fileName });
-        setShareResult('shared');
-      } catch (e) {
-        if (e.name !== 'AbortError') setShareResult('error');
-      }
-    } else {
+    try {
+      await navigator.share({ files: [file], title: fileName });
+      setShareResult('shared');
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+      // share API 미지원 시 새 탭에서 PDF 열기
       const url = URL.createObjectURL(pdfBlob);
-      const a = document.createElement('a');
-      a.href = url; a.download = fileName; a.click();
-      URL.revokeObjectURL(url);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
       setShareResult('downloaded');
     }
   }

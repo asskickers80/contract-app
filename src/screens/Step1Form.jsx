@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useContract } from '../context/ContractContext';
 import { CATEGORIES, PRODUCTS } from '../constants/categories';
 import { formatBizNumber, formatCurrency, parseCurrency } from '../lib/utils';
@@ -21,6 +21,29 @@ export default function Step1Form({ onNext }) {
   const [customType, setCustomType] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [recent, setRecent] = useState(getRecent);
+  const [showAddrSearch, setShowAddrSearch] = useState(false);
+  const [baseAddress, setBaseAddress] = useState('');
+  const [addrDetail, setAddrDetail] = useState('');
+  const addrRef = useRef(null);
+
+  useEffect(() => {
+    if (!showAddrSearch || !addrRef.current) return;
+    new window.daum.Postcode({
+      oncomplete: (result) => {
+        setBaseAddress(result.address);
+        setAddrDetail('');
+        update({ address: result.address });
+        setShowAddrSearch(false);
+      },
+      width: '100%',
+      height: '100%',
+    }).embed(addrRef.current);
+  }, [showAddrSearch]);
+
+  function handleAddrDetail(val) {
+    setAddrDetail(val);
+    update({ address: baseAddress + (val ? ' ' + val : '') });
+  }
 
   const handleBizType = (type) => {
     update({ businessType: type });
@@ -49,6 +72,17 @@ export default function Step1Form({ onNext }) {
   const valid = data.storeName.trim() && data.businessType.trim() && data.address.trim();
 
   return (
+    <>
+    {showAddrSearch && (
+      <div className="fixed inset-0 z-50 bg-white flex flex-col">
+        <div className="flex items-center gap-3 px-4 py-3 border-b bg-white">
+          <button type="button" onClick={() => setShowAddrSearch(false)}
+            className="text-gray-500 text-sm">← 닫기</button>
+          <span className="font-semibold text-gray-800">주소 검색</span>
+        </div>
+        <div ref={addrRef} className="flex-1" />
+      </div>
+    )}
     <div className="flex flex-col min-h-svh bg-gray-50">
       <header className="bg-white border-b px-4 py-4 flex items-center justify-between sticky top-0 z-10">
         <h1 className="text-lg font-bold text-gray-800">새 계약서 작성</h1>
@@ -196,13 +230,29 @@ export default function Step1Form({ onNext }) {
 
           <div>
             <label className="text-xs text-gray-400 mb-1 block">소재지 *</label>
-            <input
-              type="text"
-              value={data.address}
-              onChange={e => update({ address: e.target.value })}
-              placeholder="주소 입력"
-              className="w-full border rounded-xl px-3 py-3 text-base outline-none focus:border-blue-400"
-            />
+            {baseAddress ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 border rounded-xl px-3 py-3 bg-gray-50 text-base text-gray-800">
+                    {baseAddress}
+                  </div>
+                  <button type="button" onClick={() => { setBaseAddress(''); setAddrDetail(''); update({ address: '' }); }}
+                    className="text-sm text-gray-400 px-2">변경</button>
+                </div>
+                <input
+                  type="text"
+                  value={addrDetail}
+                  onChange={e => handleAddrDetail(e.target.value)}
+                  placeholder="상세주소 입력 (동·호수 등)"
+                  className="w-full border rounded-xl px-3 py-3 text-base outline-none focus:border-blue-400"
+                />
+              </div>
+            ) : (
+              <button type="button" onClick={() => setShowAddrSearch(true)}
+                className="w-full border rounded-xl px-3 py-3 text-left text-gray-400 text-base">
+                주소 검색
+              </button>
+            )}
           </div>
         </section>
 
@@ -278,5 +328,6 @@ export default function Step1Form({ onNext }) {
         </button>
       </div>
     </div>
+    </>
   );
 }
