@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>아이콘 생성</title></head>
+<body style="background:#f0f0f0;display:flex;flex-direction:column;align-items:center;padding:40px;font-family:sans-serif">
+<h2>점포라인 앱 아이콘 생성</h2>
+<canvas id="c" width="180" height="180" style="border-radius:40px;box-shadow:0 4px 20px rgba(0,0,0,.2)"></canvas>
+<br><br>
+<a id="dl" download="apple-touch-icon.png"
+   style="padding:12px 28px;background:#2d7a4f;color:#fff;border-radius:10px;text-decoration:none;font-size:16px">
+  PNG 다운로드
+</a>
+<script>
+const c = document.getElementById('c');
+const ctx = c.getContext('2d');
+const W = 180, CX = 90, CY = 90, R = 46;
+
+// 배경 (흰색 원각 사각형)
+ctx.fillStyle = '#ffffff';
+ctx.beginPath();
+ctx.roundRect(0, 0, W, W, 36);
+ctx.fill();
+
+// 세 점
+const dots = [
+  { angle: -90,  color: '#A6CE39' },
+  { angle:  30,  color: '#6CB33F' },
+  { angle: 150,  color: '#4E9A2E' },
+];
+dots.forEach(({ angle, color }) => {
+  const rad = angle * Math.PI / 180;
+  const x = CX + R * Math.cos(rad);
+  const y = CY + R * Math.sin(rad);
+  ctx.beginPath();
+  ctx.arc(x, y, 20, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+});
+
+// 다운로드 링크 연결
+document.getElementById('dl').href = c.toDataURL('image/png');
+</script>
+</body>
+</html>
