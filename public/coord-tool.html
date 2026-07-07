@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>좌표 측정 도구</title>
+<style>
+  body { margin: 0; background: #333; }
+  #wrap { position: relative; display: inline-block; cursor: crosshair; }
+  img { display: block; width: 855px; height: 1268px; }
+  #info {
+    position: fixed; top: 10px; right: 10px;
+    background: rgba(0,0,0,0.85); color: #0f0;
+    padding: 10px 16px; font: 14px monospace; z-index: 100;
+    border-radius: 8px; min-width: 200px;
+  }
+  .dot {
+    position: absolute; width: 6px; height: 6px;
+    background: red; border-radius: 50%;
+    transform: translate(-3px, -3px);
+    pointer-events: none;
+  }
+  #log {
+    position: fixed; bottom: 10px; right: 10px;
+    background: rgba(0,0,0,0.85); color: #ff0;
+    padding: 10px 16px; font: 12px monospace; z-index: 100;
+    border-radius: 8px; max-height: 300px; overflow-y: auto; min-width: 260px;
+  }
+</style>
+</head>
+<body>
+<div id="info">클릭하면 좌표 표시</div>
+<div id="wrap">
+  <img src="/contract-bg.jpg" id="img">
+</div>
+<div id="log"><b>클릭 기록:</b><br></div>
+
+<script>
+const wrap = document.getElementById('wrap');
+const info = document.getElementById('info');
+const log  = document.getElementById('log');
+let clicks = [];
+
+wrap.addEventListener('mousemove', e => {
+  const r = wrap.getBoundingClientRect();
+  const x = Math.round(e.clientX - r.left);
+  const y = Math.round(e.clientY - r.top);
+  info.textContent = `x: ${x}  y: ${y}`;
+});
+
+wrap.addEventListener('click', e => {
+  const r = wrap.getBoundingClientRect();
+  const x = Math.round(e.clientX - r.left);
+  const y = Math.round(e.clientY - r.top);
+
+  const dot = document.createElement('div');
+  dot.className = 'dot';
+  dot.style.left = x + 'px';
+  dot.style.top  = y + 'px';
+  wrap.appendChild(dot);
+
+  const label = prompt('이 위치의 필드 이름:', '') || '?';
+  clicks.push({ label, x, y });
+  log.innerHTML = '<b>클릭 기록:</b><br>' +
+    clicks.map(c => `${c.label}: top=${c.y}, left=${c.x}`).join('<br>');
+});
+</script>
+</body>
+</html>
