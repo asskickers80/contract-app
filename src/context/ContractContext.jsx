@@ -10,7 +10,7 @@ function makeInitial() {
     businessType: '',
     bizNumber: '',
     address: '',
-    agentName: localStorage.getItem('agentName') || '',
+    agentName: '김태우',
     productName: '',
     adFee: '',
     vat: '',

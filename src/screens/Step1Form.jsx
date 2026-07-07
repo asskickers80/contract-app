@@ -211,20 +211,6 @@ export default function Step1Form({ onNext }) {
           <p className="text-sm font-semibold text-gray-500">광고 조건</p>
 
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">담당 에이전트</label>
-            <input
-              type="text"
-              value={data.agentName}
-              onChange={e => {
-                update({ agentName: e.target.value });
-                localStorage.setItem('agentName', e.target.value);
-              }}
-              placeholder="에이전트 이름"
-              className="w-full border rounded-xl px-3 py-3 text-base outline-none focus:border-blue-400"
-            />
-          </div>
-
-          <div>
             <label className="text-xs text-gray-400 mb-1 block">광고개시일</label>
             <input
               type="date"

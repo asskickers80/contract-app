@@ -27,13 +27,18 @@ export default function Step2Sign({ onNext, onBack }) {
   const { data, update } = useContract();
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
+  const isPenActive = useRef(false);
   const [ready, setReady] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [scale, setScale] = useState(1);
 
   useEffect(() => {
-    const w = Math.min(window.innerWidth, 855);
-    setScale(w / W);
+    function updateScale() {
+      setScale(window.innerWidth / W);
+    }
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    return () => window.removeEventListener('resize', updateScale);
   }, []);
 
   const drawBase = useCallback(() => {
@@ -93,6 +98,31 @@ export default function Step2Sign({ onNext, onBack }) {
     };
   }, [drawBase]);
 
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const onPenDown  = (e) => { if (e.pointerType === 'pen') { isPenActive.current = true;  e.preventDefault(); } };
+    const onPenMove  = (e) => { if (e.pointerType === 'pen')   e.preventDefault(); };
+    const onPenUp    = (e) => { if (e.pointerType === 'pen')   isPenActive.current = false; };
+    // 혹시 펜슬이 touch 이벤트도 발생시키면 동시에 차단
+    const onTouchMove = (e) => { if (isPenActive.current) e.preventDefault(); };
+
+    canvas.addEventListener('pointerdown',  onPenDown,   { passive: false });
+    canvas.addEventListener('pointermove',  onPenMove,   { passive: false });
+    canvas.addEventListener('pointerup',    onPenUp);
+    canvas.addEventListener('pointercancel',onPenUp);
+    canvas.addEventListener('touchmove',    onTouchMove, { passive: false });
+
+    return () => {
+      canvas.removeEventListener('pointerdown',  onPenDown);
+      canvas.removeEventListener('pointermove',  onPenMove);
+      canvas.removeEventListener('pointerup',    onPenUp);
+      canvas.removeEventListener('pointercancel',onPenUp);
+      canvas.removeEventListener('touchmove',    onTouchMove);
+    };
+  }, [ready]);
+
   // pointer 좌표 → canvas 좌표 변환
   function getPos(e) {
     const rect = canvasRef.current.getBoundingClientRect();
@@ -106,9 +136,7 @@ export default function Step2Sign({ onNext, onBack }) {
   }
 
   function onPointerDown(e) {
-    // 손가락(touch)은 스크롤, pen·mouse만 그리기
-    if (e.pointerType === 'touch') return;
-    e.preventDefault();
+    if (e.pointerType === 'touch') return; // 손가락은 브라우저 기본 스크롤에 맡김
     setIsDrawing(true);
     const pos = getPos(e);
     const ctx = canvasRef.current.getContext('2d');
@@ -117,9 +145,8 @@ export default function Step2Sign({ onNext, onBack }) {
   }
 
   function onPointerMove(e) {
-    if (!isDrawing) return;
     if (e.pointerType === 'touch') return;
-    e.preventDefault();
+    if (!isDrawing) return;
     const pos = getPos(e);
     const ctx = canvasRef.current.getContext('2d');
     ctx.lineWidth   = 1.8;
@@ -131,7 +158,10 @@ export default function Step2Sign({ onNext, onBack }) {
   }
 
   function onPointerUp(e) {
-    if (e.pointerType === 'touch') return;
+    if (e.pointerType === 'touch') {
+      lastTouchY.current = null;
+      return;
+    }
     setIsDrawing(false);
   }
 
@@ -173,7 +203,7 @@ export default function Step2Sign({ onNext, onBack }) {
             display: 'block',
             width: `${W * scale}px`,
             height: `${H * scale}px`,
-            touchAction: 'pan-y', // 손가락 세로 스크롤 허용
+            touchAction: 'pan-y', // 손가락 스크롤은 브라우저에 맡김
             cursor: 'crosshair',
           }}
           onPointerDown={onPointerDown}

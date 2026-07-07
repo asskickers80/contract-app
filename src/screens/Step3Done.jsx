@@ -7,9 +7,9 @@ import { formatCurrency, toKoreanDate } from '../lib/utils';
 export default function Step3Done({ onNew }) {
   const { data, update } = useContract();
   const [status, setStatus] = useState('generating'); // generating | uploading | done | error
+  const [errorMsg, setErrorMsg] = useState('');
   const [pdfBlob, setPdfBlob] = useState(null);
   const [shareResult, setShareResult] = useState(null);
-  const [copied, setCopied] = useState('');
 
   useEffect(() => {
     generate();
@@ -25,6 +25,7 @@ export default function Step3Done({ onNew }) {
       setStatus('done');
     } catch (e) {
       console.error(e);
+      setErrorMsg(e?.message || e?.error_description || JSON.stringify(e));
       setStatus('error');
     }
   }
@@ -87,14 +88,7 @@ export default function Step3Done({ onNew }) {
 
   function handlePayment() {
     update({ paymentOpenedAt: new Date().toISOString() });
-    window.open('https://www.jumpoline.com/customer/payment.aspx', '_blank');
-  }
-
-  function copyText(text, key) {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(key);
-      setTimeout(() => setCopied(''), 2000);
-    });
+    window.open('https://m.jumpoline.com/help_cash2.asp', '_blank');
   }
 
   const statusLabel = {
@@ -132,6 +126,11 @@ export default function Step3Done({ onNew }) {
               {status === 'done' ? '✓ 저장됨' : status === 'error' ? '실패' : '처리 중...'}
             </span>
           </div>
+          {status === 'error' && errorMsg && (
+            <div className="text-xs text-red-400 bg-red-50 rounded-xl px-3 py-2 break-all">
+              {errorMsg}
+            </div>
+          )}
         </div>
 
         {/* 고객 전달 */}
@@ -155,33 +154,12 @@ export default function Step3Done({ onNew }) {
         {/* 결제 */}
         <div className="bg-white rounded-2xl p-4 space-y-3">
           <p className="text-sm font-semibold text-gray-700">광고료 결제</p>
-          <div className="bg-gray-50 rounded-xl px-3 py-3 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-400">총액</p>
-              <p className="text-2xl font-bold text-gray-800">
-                {formatCurrency(data.totalFee)}<span className="text-sm ml-1">원</span>
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => copyText(String(data.totalFee), 'fee')}
-              className="px-3 py-1.5 bg-gray-200 text-gray-600 rounded-lg text-sm"
-            >
-              {copied === 'fee' ? '복사됨' : '금액 복사'}
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="flex-1 text-sm text-gray-600 bg-gray-50 rounded-xl px-3 py-2 truncate">
-              매물광고료 - {data.storeName}
-            </div>
-            <button
-              type="button"
-              onClick={() => copyText(`매물광고료 - ${data.storeName}`, 'name')}
-              className="px-3 py-2 bg-gray-200 text-gray-600 rounded-xl text-sm flex-shrink-0"
-            >
-              {copied === 'name' ? '복사됨' : '복사'}
-            </button>
+          <div className="bg-gray-50 rounded-xl px-3 py-3">
+            <p className="text-xs text-gray-400">총액</p>
+            <p className="text-2xl font-bold text-gray-800">
+              {formatCurrency(data.totalFee)}<span className="text-sm ml-1">원</span>
+            </p>
+            <p className="text-sm text-gray-500 mt-1">매물광고료 — {data.storeName}</p>
           </div>
 
           <button
@@ -189,7 +167,7 @@ export default function Step3Done({ onNew }) {
             onClick={handlePayment}
             className="w-full py-4 rounded-xl text-base font-semibold bg-orange-500 text-white active:bg-orange-600 transition"
           >
-            광고료 결제하기 →
+            결제하기 →
           </button>
         </div>
 
@@ -198,7 +176,7 @@ export default function Step3Done({ onNew }) {
           onClick={onNew}
           className="w-full py-4 rounded-2xl text-base font-medium bg-white border border-gray-200 text-gray-600 active:bg-gray-50"
         >
-          새 계약서 작성
+          처음으로 돌아가기
         </button>
       </div>
     </div>
