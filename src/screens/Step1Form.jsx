@@ -83,9 +83,9 @@ export default function Step1Form({ onNext }) {
         <div ref={addrRef} className="flex-1" />
       </div>
     )}
-    <div className="flex flex-col min-h-svh bg-gray-50">
-      <header className="bg-white border-b px-4 py-4 flex items-center justify-between sticky top-0 z-10">
-        <h1 className="text-lg font-bold text-gray-800">새 계약서 작성</h1>
+    <div className="flex flex-col min-h-svh bg-gray-950">
+      <header className="bg-gray-900 border-b border-gray-800 px-4 py-4 flex items-center justify-between sticky top-0 z-10">
+        <h1 className="text-lg font-bold text-gray-100">새 계약서 작성</h1>
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5 pb-44">
@@ -103,8 +103,8 @@ export default function Step1Form({ onNext }) {
                   onClick={() => handleProduct(p)}
                   className={`py-3 rounded-xl text-sm font-medium border-2 transition ${
                     selected
-                      ? 'border-blue-600 bg-blue-50 text-blue-700'
-                      : 'border-gray-200 bg-white text-gray-700'
+                      ? 'border-blue-500 bg-blue-950 text-blue-300'
+                      : 'border-gray-700 bg-gray-900 text-gray-300'
                   }`}
                 >
                   <div>{p.name}</div>
@@ -116,7 +116,7 @@ export default function Step1Form({ onNext }) {
         </section>
 
         {/* 건별 입력 */}
-        <section className="bg-white rounded-2xl p-4 space-y-4">
+        <section className="bg-gray-900 rounded-2xl p-4 space-y-4">
           <p className="text-sm font-semibold text-gray-500">매물 정보</p>
 
           <div>
@@ -126,7 +126,7 @@ export default function Step1Form({ onNext }) {
               value={data.storeName}
               onChange={e => update({ storeName: e.target.value })}
               placeholder="상호명 입력"
-              className="w-full border rounded-xl px-3 py-3 text-base outline-none focus:border-blue-400"
+              className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded-xl px-3 py-3 text-base outline-none focus:border-blue-500"
             />
           </div>
 
@@ -134,7 +134,7 @@ export default function Step1Form({ onNext }) {
             <label className="text-xs text-gray-400 mb-1 block">업종 *</label>
             {data.businessType ? (
               <div className="flex items-center gap-2">
-                <div className="flex-1 border rounded-xl px-3 py-3 bg-gray-50 text-base text-gray-800">
+                <div className="flex-1 border border-gray-700 rounded-xl px-3 py-3 bg-gray-800 text-base text-gray-100">
                   {data.businessType}
                 </div>
                 <button
@@ -149,22 +149,22 @@ export default function Step1Form({ onNext }) {
               <button
                 type="button"
                 onClick={() => setShowCatPicker(v => !v)}
-                className="w-full border rounded-xl px-3 py-3 text-left text-gray-400 text-base"
+                className="w-full border border-gray-700 bg-gray-800 rounded-xl px-3 py-3 text-left text-gray-500 text-base"
               >
                 업종 선택
               </button>
             )}
 
             {showCatPicker && !data.businessType && (
-              <div className="mt-2 border rounded-2xl bg-white overflow-hidden">
+              <div className="mt-2 border border-gray-700 rounded-2xl bg-gray-900 overflow-hidden">
                 {/* 최근 선택 */}
                 {recent.length > 0 && (
-                  <div className="px-3 py-2 border-b">
+                  <div className="px-3 py-2 border-b border-gray-800">
                     <p className="text-xs text-gray-400 mb-1.5">최근 선택</p>
                     <div className="flex flex-wrap gap-2">
                       {recent.map(t => (
                         <button key={t} type="button" onClick={() => handleBizType(t)}
-                          className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-sm">
+                          className="px-3 py-1.5 bg-blue-950 text-blue-300 rounded-lg text-sm">
                           {t}
                         </button>
                       ))}
@@ -172,12 +172,12 @@ export default function Step1Form({ onNext }) {
                   </div>
                 )}
                 {/* 대분류 탭 */}
-                <div className="overflow-x-auto flex border-b">
+                <div className="overflow-x-auto flex border-b border-gray-800">
                   {CATEGORIES.map((cat, i) => (
                     <button key={cat.label} type="button"
                       onClick={() => setCatTab(i)}
                       className={`flex-shrink-0 px-3 py-2 text-sm border-b-2 transition ${
-                        catTab === i ? 'border-blue-600 text-blue-700 font-medium' : 'border-transparent text-gray-500'
+                        catTab === i ? 'border-blue-500 text-blue-400 font-medium' : 'border-transparent text-gray-500'
                       }`}>
                       {cat.label}
                     </button>
@@ -187,12 +187,12 @@ export default function Step1Form({ onNext }) {
                 <div className="p-3 flex flex-wrap gap-2">
                   {CATEGORIES[catTab].items.map(item => (
                     <button key={item} type="button" onClick={() => handleBizType(item)}
-                      className="px-3 py-1.5 border rounded-lg text-sm text-gray-700 bg-gray-50 active:bg-gray-200">
+                      className="px-3 py-1.5 border border-gray-700 rounded-lg text-sm text-gray-300 bg-gray-800 active:bg-gray-700">
                       {item}
                     </button>
                   ))}
                   <button type="button" onClick={() => setShowCustomInput(v => !v)}
-                    className="px-3 py-1.5 border-dashed border-2 rounded-lg text-sm text-gray-400">
+                    className="px-3 py-1.5 border-dashed border-2 border-gray-600 rounded-lg text-sm text-gray-500">
                     직접입력
                   </button>
                 </div>
@@ -203,7 +203,7 @@ export default function Step1Form({ onNext }) {
                       value={customType}
                       onChange={e => setCustomType(e.target.value)}
                       placeholder="업종명 직접 입력"
-                      className="flex-1 border rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400"
+                      className="flex-1 border border-gray-700 bg-gray-800 text-gray-100 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
                     />
                     <button type="button"
                       onClick={() => { if (customType.trim()) handleBizType(customType.trim()); }}
@@ -224,7 +224,7 @@ export default function Step1Form({ onNext }) {
               value={data.bizNumber}
               onChange={e => update({ bizNumber: formatBizNumber(e.target.value) })}
               placeholder="000-00-00000"
-              className="w-full border rounded-xl px-3 py-3 text-base outline-none focus:border-blue-400"
+              className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded-xl px-3 py-3 text-base outline-none focus:border-blue-500"
             />
           </div>
 
@@ -233,7 +233,7 @@ export default function Step1Form({ onNext }) {
             {baseAddress ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 border rounded-xl px-3 py-3 bg-gray-50 text-base text-gray-800">
+                  <div className="flex-1 border border-gray-700 rounded-xl px-3 py-3 bg-gray-800 text-base text-gray-100">
                     {baseAddress}
                   </div>
                   <button type="button" onClick={() => { setBaseAddress(''); setAddrDetail(''); update({ address: '' }); }}
@@ -244,12 +244,12 @@ export default function Step1Form({ onNext }) {
                   value={addrDetail}
                   onChange={e => handleAddrDetail(e.target.value)}
                   placeholder="상세주소 입력 (동·호수 등)"
-                  className="w-full border rounded-xl px-3 py-3 text-base outline-none focus:border-blue-400"
+                  className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded-xl px-3 py-3 text-base outline-none focus:border-blue-500"
                 />
               </div>
             ) : (
               <button type="button" onClick={() => setShowAddrSearch(true)}
-                className="w-full border rounded-xl px-3 py-3 text-left text-gray-400 text-base">
+                className="w-full border border-gray-700 bg-gray-800 rounded-xl px-3 py-3 text-left text-gray-500 text-base">
                 주소 검색
               </button>
             )}
@@ -257,7 +257,7 @@ export default function Step1Form({ onNext }) {
         </section>
 
         {/* 기본값 (수정 가능) */}
-        <section className="bg-white rounded-2xl p-4 space-y-4">
+        <section className="bg-gray-900 rounded-2xl p-4 space-y-4">
           <p className="text-sm font-semibold text-gray-500">광고 조건</p>
 
           <div>
@@ -266,7 +266,7 @@ export default function Step1Form({ onNext }) {
               type="date"
               value={data.startDate}
               onChange={e => update({ startDate: e.target.value })}
-              className="w-full border rounded-xl px-3 py-3 text-base outline-none focus:border-blue-400"
+              className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded-xl px-3 py-3 text-base outline-none focus:border-blue-500"
             />
           </div>
 
@@ -279,7 +279,7 @@ export default function Step1Form({ onNext }) {
                 value={data.adFee ? formatCurrency(data.adFee) : ''}
                 onChange={e => handleFeeChange('adFee', e.target.value)}
                 placeholder="0"
-                className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400 text-right"
+                className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-500 text-right"
               />
             </div>
             <div>
@@ -290,7 +290,7 @@ export default function Step1Form({ onNext }) {
                 value={data.vat ? formatCurrency(data.vat) : ''}
                 onChange={e => handleFeeChange('vat', e.target.value)}
                 placeholder="0"
-                className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400 text-right"
+                className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-500 text-right"
               />
             </div>
             <div>
@@ -301,27 +301,27 @@ export default function Step1Form({ onNext }) {
                 value={data.totalFee ? formatCurrency(data.totalFee) : ''}
                 onChange={e => update({ totalFee: parseCurrency(e.target.value) })}
                 placeholder="0"
-                className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400 text-right"
+                className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-500 text-right"
               />
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 rounded-xl px-3 py-3">
+          <div className="flex items-center gap-2 text-sm text-gray-400 bg-gray-800 rounded-xl px-3 py-3">
             <span>광고기간</span>
-            <span className="font-medium text-gray-800 ml-auto">3개월</span>
+            <span className="font-medium text-gray-200 ml-auto">3개월</span>
             <span>·</span>
             <span>종료일 {data.endDate}</span>
           </div>
         </section>
       </div>
 
-      <div className="fixed bottom-16 left-0 right-0 bg-white border-t px-4 py-4">
+      <div className="fixed bottom-16 left-0 right-0 bg-gray-900 border-t border-gray-800 px-4 py-4">
         <button
           type="button"
           onClick={onNext}
           disabled={!valid}
           className={`w-full py-4 rounded-2xl text-base font-semibold transition ${
-            valid ? 'bg-blue-600 text-white active:bg-blue-700' : 'bg-gray-200 text-gray-400'
+            valid ? 'bg-blue-600 text-white active:bg-blue-700' : 'bg-gray-700 text-gray-500'
           }`}
         >
           다음 — 고객 서명

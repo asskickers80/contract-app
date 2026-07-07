@@ -58,20 +58,20 @@ export default function PinLock({ onUnlock }) {
     : 'PIN을 입력하세요';
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-svh bg-gray-50 gap-8 px-6">
+    <div className="flex flex-col items-center justify-center min-h-svh bg-gray-950 gap-8 px-6">
       <div className="text-center">
-        <p className="text-lg font-medium text-gray-700 mb-1">{label}</p>
+        <p className="text-lg font-medium text-gray-200 mb-1">{label}</p>
         <div className="flex gap-4 justify-center mt-4">
           {[0, 1, 2, 3].map(i => (
             <div
               key={i}
               className={`w-4 h-4 rounded-full border-2 transition-colors ${
-                i < pin.length ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
+                i < pin.length ? 'bg-blue-500 border-blue-500' : 'bg-gray-900 border-gray-600'
               }`}
             />
           ))}
         </div>
-        {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
+        {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
       </div>
 
       <div className="grid grid-cols-3 gap-4 w-72">
@@ -85,8 +85,8 @@ export default function PinLock({ onUnlock }) {
               onClick={() => handleKey(k)}
               className={`h-16 rounded-2xl text-xl font-medium shadow-sm transition active:scale-95 ${
                 k === 'del'
-                  ? 'bg-gray-200 text-gray-600'
-                  : 'bg-white text-gray-800'
+                  ? 'bg-gray-700 text-gray-300'
+                  : 'bg-gray-800 text-gray-100'
               }`}
             >
               {k === 'del' ? '⌫' : k}

@@ -96,16 +96,16 @@ export default function Step3Done({ onNew }) {
   }[status];
 
   return (
-    <div className="flex flex-col min-h-svh bg-gray-50">
-      <header className="bg-white border-b px-4 py-4 sticky top-0 z-10">
-        <h1 className="text-lg font-bold text-gray-800">계약 완료</h1>
+    <div className="flex flex-col min-h-svh bg-gray-950">
+      <header className="bg-gray-900 border-b border-gray-800 px-4 py-4 sticky top-0 z-10">
+        <h1 className="text-lg font-bold text-gray-100">계약 완료</h1>
         <p className="text-sm text-gray-500 mt-0.5">{statusLabel}</p>
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-5 space-y-4 pb-6">
 
         {/* 요약 */}
-        <div className="bg-white rounded-2xl p-4 space-y-2">
+        <div className="bg-gray-900 rounded-2xl p-4 space-y-2">
           {[
             ['상호',    data.storeName],
             ['업종',    data.businessType],
@@ -114,31 +114,31 @@ export default function Step3Done({ onNew }) {
           ].map(([label, val]) => (
             <div key={label} className="flex justify-between text-sm">
               <span className="text-gray-500">{label}</span>
-              <span className="font-medium">{val}</span>
+              <span className="font-medium text-gray-200">{val}</span>
             </div>
           ))}
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">저장 상태</span>
-            <span className={`font-medium ${status === 'done' ? 'text-green-600' : status === 'error' ? 'text-red-500' : 'text-yellow-500'}`}>
+            <span className={`font-medium ${status === 'done' ? 'text-green-400' : status === 'error' ? 'text-red-400' : 'text-yellow-400'}`}>
               {status === 'done' ? '✓ 저장됨' : status === 'error' ? '실패' : '처리 중...'}
             </span>
           </div>
           {status === 'error' && errorMsg && (
-            <div className="text-xs text-red-400 bg-red-50 rounded-xl px-3 py-2 break-all">
+            <div className="text-xs text-red-300 bg-red-950 rounded-xl px-3 py-2 break-all">
               {errorMsg}
             </div>
           )}
         </div>
 
         {/* 고객 전달 */}
-        <div className="bg-white rounded-2xl p-4 space-y-3">
-          <p className="text-sm font-semibold text-gray-700">고객에게 전달</p>
+        <div className="bg-gray-900 rounded-2xl p-4 space-y-3">
+          <p className="text-sm font-semibold text-gray-300">고객에게 전달</p>
           <button
             type="button"
             onClick={handleShare}
             disabled={!pdfBlob}
             className={`w-full py-4 rounded-xl text-base font-semibold transition ${
-              pdfBlob ? 'bg-blue-600 text-white active:bg-blue-700' : 'bg-gray-200 text-gray-400'
+              pdfBlob ? 'bg-blue-600 text-white active:bg-blue-700' : 'bg-gray-700 text-gray-500'
             }`}
           >
             {shareResult === 'shared' ? '✓ 전달 완료' : shareResult === 'downloaded' ? '✓ 다운로드됨' : '고객에게 보내기'}
@@ -149,14 +149,14 @@ export default function Step3Done({ onNew }) {
         </div>
 
         {/* 결제 */}
-        <div className="bg-white rounded-2xl p-4 space-y-3">
-          <p className="text-sm font-semibold text-gray-700">광고료 결제</p>
-          <div className="bg-gray-50 rounded-xl px-3 py-3">
-            <p className="text-xs text-gray-400">총액</p>
-            <p className="text-2xl font-bold text-gray-800">
+        <div className="bg-gray-900 rounded-2xl p-4 space-y-3">
+          <p className="text-sm font-semibold text-gray-300">광고료 결제</p>
+          <div className="bg-gray-800 rounded-xl px-3 py-3">
+            <p className="text-xs text-gray-500">총액</p>
+            <p className="text-2xl font-bold text-gray-100">
               {formatCurrency(data.totalFee)}<span className="text-sm ml-1">원</span>
             </p>
-            <p className="text-sm text-gray-500 mt-1">매물광고료 — {data.storeName}</p>
+            <p className="text-sm text-gray-400 mt-1">매물광고료 — {data.storeName}</p>
           </div>
 
           <button
@@ -171,7 +171,7 @@ export default function Step3Done({ onNew }) {
         <button
           type="button"
           onClick={onNew}
-          className="w-full py-4 rounded-2xl text-base font-medium bg-white border border-gray-200 text-gray-600 active:bg-gray-50"
+          className="w-full py-4 rounded-2xl text-base font-medium bg-gray-900 border border-gray-700 text-gray-300 active:bg-gray-800"
         >
           처음으로 돌아가기
         </button>

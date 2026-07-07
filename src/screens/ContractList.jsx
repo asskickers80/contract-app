@@ -57,22 +57,22 @@ export default function ContractList({ onBack }) {
   }
 
   return (
-    <div className="flex flex-col min-h-svh bg-gray-50">
-      <header className="bg-white border-b px-4 py-4 sticky top-0 z-10">
+    <div className="flex flex-col min-h-svh bg-gray-950">
+      <header className="bg-gray-900 border-b border-gray-800 px-4 py-4 sticky top-0 z-10">
         <div className="flex items-center gap-3 mb-3">
-          <button type="button" onClick={onBack} className="text-gray-500 text-sm">← 뒤로</button>
-          <h1 className="text-lg font-bold text-gray-800">계약 목록</h1>
+          <button type="button" onClick={onBack} className="text-gray-400 text-sm">← 뒤로</button>
+          <h1 className="text-lg font-bold text-gray-100">계약 목록</h1>
         </div>
         <input
           type="text"
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="상호명 또는 날짜(2026-07) 검색"
-          className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
+          className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-500"
         />
       </header>
 
-      <div className="flex-1 overflow-y-auto divide-y bg-white">
+      <div className="flex-1 overflow-y-auto divide-y divide-gray-800 bg-gray-950">
         {loading && (
           <p className="text-center text-gray-400 py-12">불러오는 중...</p>
         )}
@@ -82,15 +82,15 @@ export default function ContractList({ onBack }) {
         {filtered.map(c => (
           <div key={c.id} className="px-4 py-4 flex items-center gap-3">
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-gray-800 truncate">{c.store_name}</p>
-              <p className="text-sm text-gray-500">{c.business_type} · {formatCurrency(c.total_fee)}원</p>
-              <p className="text-xs text-gray-400 mt-0.5">{c.signed_at ? toKoreanDate(c.signed_at.split('T')[0]) : ''}</p>
+              <p className="font-medium text-gray-100 truncate">{c.store_name}</p>
+              <p className="text-sm text-gray-400">{c.business_type} · {formatCurrency(c.total_fee)}원</p>
+              <p className="text-xs text-gray-500 mt-0.5">{c.signed_at ? toKoreanDate(c.signed_at.split('T')[0]) : ''}</p>
             </div>
             <button
               type="button"
               onClick={() => handleReshare(c)}
               disabled={sharing === c.id}
-              className="flex-shrink-0 px-3 py-2 bg-blue-50 text-blue-700 rounded-xl text-sm font-medium"
+              className="flex-shrink-0 px-3 py-2 bg-blue-950 text-blue-300 rounded-xl text-sm font-medium"
             >
               {sharing === c.id ? '...' : '재공유'}
             </button>
