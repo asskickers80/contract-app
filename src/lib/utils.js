@@ -43,6 +43,13 @@ export function formatBizNumber(value) {
   return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
 }
 
+export function formatPhone(value) {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+}
+
 export function nowKoreanDate() {
   const now = new Date();
   return `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일`;
