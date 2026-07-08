@@ -1,10 +1,6 @@
 const INTRANET_URL = 'https://success.jumpoline.com/';
 
 export default function IntranetTab() {
-  function handleOpen() {
-    window.open(INTRANET_URL, '_blank');
-  }
-
   return (
     <div className="flex flex-col min-h-svh bg-gray-950">
       <header className="bg-gray-900 border-b border-gray-800 px-4 py-4 sticky top-0 z-10">
@@ -15,19 +11,18 @@ export default function IntranetTab() {
         <div className="text-center space-y-2">
           <p className="text-gray-200 text-lg font-medium">점포라인 인트라넷</p>
           <p className="text-sm text-gray-500">
-            보안 정책상 앱 내부에 표시할 수 없어
+            앱 안 화면으로 열립니다.
             <br />
-            새 탭(Safari)으로 열립니다.
+            왼쪽 위 <span className="text-gray-300">완료</span>를 누르면 돌아옵니다.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleOpen}
-          className="w-full max-w-xs py-4 rounded-2xl text-base font-semibold bg-blue-600 text-white active:bg-blue-700 transition"
+        <a
+          href={INTRANET_URL}
+          className="block w-full max-w-xs py-4 rounded-2xl text-base font-semibold bg-blue-600 text-white active:bg-blue-700 transition text-center"
         >
           인트라넷 열기
-        </button>
+        </a>
 
         <div className="bg-gray-900 rounded-2xl px-4 py-4 max-w-xs">
           <p className="text-xs text-gray-400 leading-relaxed">
