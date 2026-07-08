@@ -14,7 +14,7 @@ function saveRecent(type) {
   localStorage.setItem(RECENT_KEY, JSON.stringify([type, ...prev].slice(0, 3)));
 }
 
-export default function Step1Form({ onNext }) {
+export default function Step1Form({ onNext, onList }) {
   const { data, update } = useContract();
   const [catTab, setCatTab] = useState(0);
   const [showCatPicker, setShowCatPicker] = useState(false);
@@ -86,6 +86,9 @@ export default function Step1Form({ onNext }) {
     <div className="flex flex-col min-h-svh bg-gray-950">
       <header className="bg-gray-900 border-b border-gray-800 px-4 py-4 flex items-center justify-between sticky top-0 z-10">
         <h1 className="text-lg font-bold text-gray-100">새 계약서 작성</h1>
+        <button type="button" onClick={onList} className="text-sm text-blue-400 px-2 py-1">
+          계약 목록
+        </button>
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5 pb-44">
