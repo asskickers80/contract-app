@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { ContractProvider } from './context/ContractContext';
 import SplashScreen from './screens/SplashScreen';
 import PinLock from './screens/PinLock';
-import IntranetTab from './screens/IntranetTab';
 import ListingsTab from './screens/ListingsTab';
 import SettingsTab from './screens/SettingsTab';
 import Step1Form from './screens/Step1Form';
@@ -11,7 +10,6 @@ import Step3Done from './screens/Step3Done';
 import ContractList from './screens/ContractList';
 
 const TABS = [
-  { key: 'intranet', label: '인트라넷' },
   { key: 'listings', label: '매물카드' },
   { key: 'contract', label: '계약서' },
   { key: 'settings', label: '설정' },
@@ -20,7 +18,7 @@ const TABS = [
 export default function App() {
   const [splash, setSplash] = useState(true);
   const [auth, setAuth] = useState(false);
-  const [tab, setTab] = useState('intranet');
+  const [tab, setTab] = useState('listings');
   const [contractScreen, setContractScreen] = useState('step1'); // step1 | step2 | step3 | list
 
   if (splash) {
@@ -54,7 +52,6 @@ export default function App() {
       )}
 
       <div className={hideTabBar ? '' : 'pb-16'}>
-        {tab === 'intranet' && <IntranetTab />}
         {tab === 'listings' && <ListingsTab />}
         {tab === 'settings' && <SettingsTab />}
 

@@ -31,6 +31,49 @@ export async function fetchListings() {
   return data || [];
 }
 
+export async function fetchAttachments(listingId) {
+  const { data, error } = await supabase
+    .from('attachments')
+    .select('*')
+    .eq('listing_id', listingId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+
+  const withUrls = await Promise.all(
+    (data || []).map(async (a) => {
+      const { data: urlData } = await supabase.storage
+        .from('contracts')
+        .createSignedUrl(a.image_path, 3600);
+      return { ...a, url: urlData?.signedUrl || '' };
+    }),
+  );
+  return withUrls;
+}
+
+export async function uploadAttachments(listingId, files) {
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+    const path = `attachments/${listingId}/${Date.now()}_${i}.${ext}`;
+
+    const { error: upErr } = await supabase.storage
+      .from('contracts')
+      .upload(path, file, { contentType: file.type || 'image/jpeg' });
+    if (upErr) throw upErr;
+
+    const { error: insErr } = await supabase
+      .from('attachments')
+      .insert({ listing_id: listingId, image_path: path });
+    if (insErr) throw insErr;
+  }
+}
+
+export async function deleteAttachment(attachment) {
+  await supabase.storage.from('contracts').remove([attachment.image_path]);
+  const { error } = await supabase.from('attachments').delete().eq('id', attachment.id);
+  if (error) throw error;
+}
+
 export async function saveCard({ customer, listing, listingId }) {
   const { data: cust, error: custErr } = await supabase
     .from('customers')
