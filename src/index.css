@@ -1,23 +1,15 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-* {
-  -webkit-tap-highlight-color: transparent;
-  box-sizing: border-box;
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  margin: 0;
-  background: #030712;
-  overscroll-behavior: none;
-  -webkit-overflow-scrolling: touch;
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
 
+/* iPad 홈 화면 앱(standalone)에서 상단 노치 영역 확보 */
 #root {
-  min-height: 100svh;
-}
-
-input, textarea {
-  font-size: 16px; /* zoom 방지 */
+  padding-top: env(safe-area-inset-top);
 }

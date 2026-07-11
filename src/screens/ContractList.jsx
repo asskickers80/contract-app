@@ -1,102 +1,103 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { formatCurrency, toKoreanDate } from '../lib/utils';
+import { useEffect, useState } from 'react'
+import { listContracts, downloadContractPdf, isSupabaseConfigured } from '../lib/supabase.js'
+import { sharePdf, downloadBlob } from '../lib/share.js'
+import { formatKoreanDate } from '../lib/format.js'
 
-export default function ContractList({ onBack }) {
-  const [contracts, setContracts] = useState([]);
-  const [query, setQuery] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [sharing, setSharing] = useState(null);
+// 목록 탭 — 서명 완료 계약 검색(상호), PDF 재다운로드, 재공유
+export default function ContractList() {
+  const [keyword, setKeyword] = useState('')
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [busyId, setBusyId] = useState(null)
 
-  useEffect(() => {
-    fetchContracts();
-  }, []);
-
-  async function fetchContracts() {
-    setLoading(true);
-    const { data } = await supabase
-      .from('contracts')
-      .select('*')
-      .order('signed_at', { ascending: false })
-      .limit(100);
-    setContracts(data || []);
-    setLoading(false);
+  async function load(kw) {
+    if (!isSupabaseConfigured) {
+      setLoading(false)
+      setError('Supabase가 설정되지 않아 목록을 불러올 수 없어요. (.env에 VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY 설정)')
+      return
+    }
+    setLoading(true)
+    setError('')
+    try {
+      setRows(await listContracts(kw))
+    } catch (err) {
+      setError(`목록을 불러오지 못했어요: ${err.message || err}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const filtered = contracts.filter(c =>
-    c.store_name?.includes(query) || c.signed_at?.startsWith(query)
-  );
+  useEffect(() => {
+    load('')
+  }, [])
 
-  async function handleReshare(contract) {
-    setSharing(contract.id);
+  async function withPdf(row, action) {
+    setBusyId(row.id)
     try {
-      const { data: urlData } = await supabase.storage
-        .from('contracts')
-        .createSignedUrl(contract.pdf_path, 60 * 5);
-
-      const resp = await fetch(urlData.signedUrl);
-      const blob = await resp.blob();
-      const fileName = contract.pdf_path.split('/').pop();
-      const file = new File([blob], fileName, { type: 'application/pdf' });
-
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: fileName });
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-    } catch (e) {
-      console.error(e);
+      const blob = await downloadContractPdf(row.pdf_path)
+      await action(blob, row.file_name || `${row.store_name}.pdf`)
+    } catch (err) {
+      alert(`PDF를 가져오지 못했어요: ${err.message || err}`)
     } finally {
-      setSharing(null);
+      setBusyId(null)
     }
   }
 
   return (
-    <div className="flex flex-col min-h-svh bg-gray-950">
-      <header className="bg-gray-900 border-b border-gray-800 px-4 py-4 sticky top-0 z-10">
-        <div className="flex items-center gap-3 mb-3">
-          <button type="button" onClick={onBack} className="text-gray-400 text-sm">← 뒤로</button>
-          <h1 className="text-lg font-bold text-gray-100">계약 목록</h1>
-        </div>
-        <input
-          type="text"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="상호명 또는 날짜(2026-07) 검색"
-          className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-500"
-        />
-      </header>
+    <div className="pb-10">
+      <div className="mx-auto max-w-2xl space-y-3 px-4">
+        <form
+          onSubmit={e => { e.preventDefault(); load(keyword) }}
+          className="flex gap-2"
+        >
+          <input
+            type="search" value={keyword} onChange={e => setKeyword(e.target.value)}
+            placeholder="상호로 검색"
+            className="flex-1 rounded-xl border border-gray-300 bg-white px-3 py-3 text-base focus:border-blue-500 focus:outline-none"
+          />
+          <button type="submit" className="rounded-xl bg-gray-900 px-5 text-sm font-bold text-white">검색</button>
+        </form>
 
-      <div className="flex-1 overflow-y-auto divide-y divide-gray-800 bg-gray-950">
-        {loading && (
-          <p className="text-center text-gray-400 py-12">불러오는 중...</p>
+        {loading && <p className="py-10 text-center text-sm text-gray-400">불러오는 중…</p>}
+        {error && <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</p>}
+        {!loading && !error && rows.length === 0 && (
+          <p className="py-10 text-center text-sm text-gray-400">저장된 계약서가 없어요.</p>
         )}
-        {!loading && filtered.length === 0 && (
-          <p className="text-center text-gray-400 py-12">계약 내역이 없습니다.</p>
-        )}
-        {filtered.map(c => (
-          <div key={c.id} className="px-4 py-4 flex items-center gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-gray-100 truncate">{c.store_name}</p>
-              <p className="text-sm text-gray-400">{c.business_type} · {formatCurrency(c.total_fee)}원</p>
-              <p className="text-xs text-gray-500 mt-0.5">{c.signed_at ? toKoreanDate(c.signed_at.split('T')[0]) : ''}</p>
+
+        {rows.map(row => (
+          <div key={row.id} className="rounded-2xl bg-white p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-base font-bold text-gray-900">{row.store_name}</p>
+                <p className="mt-0.5 text-xs text-gray-400">
+                  {row.business_type} · 총 {Number(row.total || 0).toLocaleString('ko-KR')}원
+                </p>
+                <p className="mt-0.5 text-xs text-gray-400">
+                  개시 {formatKoreanDate(row.start_date)} · 서명 {row.signed_at ? new Date(row.signed_at).toLocaleString('ko-KR') : '—'}
+                </p>
+                {row.payment_opened_at && <p className="mt-0.5 text-xs text-blue-500">결제 페이지 연 시각: {new Date(row.payment_opened_at).toLocaleString('ko-KR')}</p>}
+              </div>
+              <div className="flex shrink-0 flex-col gap-2">
+                <button
+                  onClick={() => withPdf(row, (blob, name) => sharePdf(blob, name))}
+                  disabled={busyId === row.id}
+                  className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                >
+                  {busyId === row.id ? '…' : '재공유'}
+                </button>
+                <button
+                  onClick={() => withPdf(row, (blob, name) => downloadBlob(blob, name))}
+                  disabled={busyId === row.id}
+                  className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 disabled:opacity-50"
+                >
+                  다운로드
+                </button>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => handleReshare(c)}
-              disabled={sharing === c.id}
-              className="flex-shrink-0 px-3 py-2 bg-blue-950 text-blue-300 rounded-xl text-sm font-medium"
-            >
-              {sharing === c.id ? '...' : '재공유'}
-            </button>
           </div>
         ))}
       </div>
     </div>
-  );
+  )
 }

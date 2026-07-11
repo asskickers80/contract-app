@@ -1,99 +1,106 @@
-import { useState } from 'react';
+import { useState } from 'react'
+import { hashText } from '../lib/compat.js'
 
-const STORAGE_KEY = 'contract_pin';
+const PIN_KEY = 'contract.pinHash'
 
+// 인트라넷(HTTP) 접속에서도 동작하도록 compat의 해시 사용
+function hashPin(pin) {
+  return hashText(`jumpoline-contract:${pin}`)
+}
+
+export function hasPin() {
+  return Boolean(localStorage.getItem(PIN_KEY))
+}
+
+export async function savePin(pin) {
+  localStorage.setItem(PIN_KEY, await hashPin(pin))
+}
+
+// 내부 전용 간단 PIN 잠금 (4자리) — 최초 실행 시 설정, 이후 잠금 해제
 export default function PinLock({ onUnlock }) {
-  const storedPin = localStorage.getItem(STORAGE_KEY);
-  const isFirstRun = !storedPin;
+  const setupMode = !hasPin()
+  const [pin, setPin] = useState('')
+  const [firstPin, setFirstPin] = useState(null) // 설정 모드: 첫 입력 보관
+  const [error, setError] = useState('')
+  const [shaking, setShaking] = useState(false)
 
-  const [mode, setMode] = useState(isFirstRun ? 'set' : 'enter'); // 'set' | 'confirm' | 'enter'
-  const [pin, setPin] = useState('');
-  const [newPin, setNewPin] = useState('');
-  const [error, setError] = useState('');
+  const title = setupMode
+    ? (firstPin ? 'PIN 한 번 더 입력' : '사용할 PIN 4자리 설정')
+    : 'PIN 입력'
 
-  function handleKey(digit) {
-    if (digit === 'del') {
-      setPin(p => p.slice(0, -1));
-      setError('');
-      return;
-    }
-    const next = pin + digit;
-    if (next.length > 4) return;
-    setPin(next);
+  async function handleDigit(d) {
+    if (pin.length >= 4) return
+    const next = pin + d
+    setPin(next)
+    setError('')
+    if (next.length < 4) return
 
-    if (next.length === 4) {
-      setTimeout(() => processPin(next), 80);
-    }
-  }
-
-  function processPin(entered) {
-    if (mode === 'set') {
-      setNewPin(entered);
-      setPin('');
-      setMode('confirm');
-    } else if (mode === 'confirm') {
-      if (entered === newPin) {
-        localStorage.setItem(STORAGE_KEY, entered);
-        onUnlock();
+    if (setupMode) {
+      if (!firstPin) {
+        setFirstPin(next)
+        setPin('')
+      } else if (firstPin === next) {
+        await savePin(next)
+        onUnlock()
       } else {
-        setPin('');
-        setNewPin('');
-        setMode('set');
-        setError('PIN이 일치하지 않습니다. 다시 설정하세요.');
+        setFirstPin(null)
+        setPin('')
+        setError('PIN이 일치하지 않아요. 처음부터 다시 설정해 주세요.')
+        shake()
       }
+      return
+    }
+
+    const ok = (await hashPin(next)) === localStorage.getItem(PIN_KEY)
+    if (ok) {
+      onUnlock()
     } else {
-      if (entered === storedPin) {
-        onUnlock();
-      } else {
-        setPin('');
-        setError('PIN이 틀렸습니다.');
-      }
+      setPin('')
+      setError('PIN이 맞지 않아요.')
+      shake()
     }
   }
 
-  const label = mode === 'set'
-    ? 'PIN 4자리를 설정하세요'
-    : mode === 'confirm'
-    ? 'PIN을 한 번 더 입력하세요'
-    : 'PIN을 입력하세요';
+  function shake() {
+    setShaking(true)
+    setTimeout(() => setShaking(false), 400)
+  }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-svh bg-gray-950 gap-8 px-6">
-      <div className="text-center">
-        <p className="text-lg font-medium text-gray-200 mb-1">{label}</p>
-        <div className="flex gap-4 justify-center mt-4">
-          {[0, 1, 2, 3].map(i => (
-            <div
-              key={i}
-              className={`w-4 h-4 rounded-full border-2 transition-colors ${
-                i < pin.length ? 'bg-blue-500 border-blue-500' : 'bg-gray-900 border-gray-600'
-              }`}
-            />
-          ))}
-        </div>
-        {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
-      </div>
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-slate-50 px-6">
+      <div className="text-2xl font-bold text-gray-900">점포라인 계약서</div>
+      <p className="mt-2 text-sm text-gray-500">{title}</p>
 
-      <div className="grid grid-cols-3 gap-4 w-72">
-        {['1','2','3','4','5','6','7','8','9','','0','del'].map((k, idx) => (
-          k === '' ? (
+      <div className={`mt-6 flex gap-4 ${shaking ? 'animate-bounce' : ''}`}>
+        {[0, 1, 2, 3].map(i => (
+          <div key={i} className={`h-4 w-4 rounded-full ${i < pin.length ? 'bg-blue-600' : 'bg-gray-300'}`} />
+        ))}
+      </div>
+      {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+
+      <div className="mt-8 grid w-64 grid-cols-3 gap-3">
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, null, 0, 'del'].map((key, idx) =>
+          key === null ? (
             <div key={idx} />
+          ) : key === 'del' ? (
+            <button
+              key={idx}
+              onClick={() => setPin(p => p.slice(0, -1))}
+              className="h-16 rounded-2xl bg-white text-lg font-semibold text-gray-500 shadow-sm active:bg-gray-100"
+            >
+              ⌫
+            </button>
           ) : (
             <button
               key={idx}
-              type="button"
-              onClick={() => handleKey(k)}
-              className={`h-16 rounded-2xl text-xl font-medium shadow-sm transition active:scale-95 ${
-                k === 'del'
-                  ? 'bg-gray-700 text-gray-300'
-                  : 'bg-gray-800 text-gray-100'
-              }`}
+              onClick={() => handleDigit(String(key))}
+              className="h-16 rounded-2xl bg-white text-xl font-bold text-gray-900 shadow-sm active:bg-blue-50"
             >
-              {k === 'del' ? '⌫' : k}
+              {key}
             </button>
-          )
-        ))}
+          ),
+        )}
       </div>
     </div>
-  );
+  )
 }

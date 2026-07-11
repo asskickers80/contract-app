@@ -1,79 +1,77 @@
-import { useState } from 'react';
-import { ContractProvider } from './context/ContractContext';
-import SplashScreen from './screens/SplashScreen';
-import PinLock from './screens/PinLock';
-import ListingsTab from './screens/ListingsTab';
-import SettingsTab from './screens/SettingsTab';
-import Step1Form from './screens/Step1Form';
-import Step2Sign from './screens/Step2Sign';
-import Step3Done from './screens/Step3Done';
-import ContractList from './screens/ContractList';
+import { useState } from 'react'
+import SplashScreen from './screens/SplashScreen.jsx'
+import PinLock from './screens/PinLock.jsx'
+import AppTabs, { APP_TABS } from './components/AppTabs.jsx'
+import ListingTab from './screens/ListingTab.jsx'
+import NoteTab from './screens/NoteTab.jsx'
+import ContractTab from './screens/ContractTab.jsx'
+import DeliveryTab from './screens/DeliveryTab.jsx'
 
-const TABS = [
-  { key: 'listings', label: '매물카드' },
-  { key: 'contract', label: '계약서' },
-  { key: 'settings', label: '설정' },
-];
+// [0 매물카드] [1 노트] [2 계약] [3 전달·결제]
+// 천하통일(인트라넷) 탭 완전 제거 (2026-07-11 대표님 결정)
 
 export default function App() {
-  const [splash, setSplash] = useState(true);
-  const [auth, setAuth] = useState(false);
-  const [tab, setTab] = useState('listings');
-  const [contractScreen, setContractScreen] = useState('step1'); // step1 | step2 | step3 | list
+  const [splashDone, setSplashDone] = useState(sessionStorage.getItem('contract.splashDone') === '1')
+  const [unlocked, setUnlocked] = useState(sessionStorage.getItem('contract.unlocked') === '1')
+  const [active, setActive] = useState(0)
+  const [activeCardKey, setActiveCardKey] = useState(null)
+  const [contractResult, setContractResult] = useState(null)
+  const [contractKey, setContractKey] = useState(0)
 
-  if (splash) {
-    return <SplashScreen onDone={() => setSplash(false)} />;
+  function handleContractComplete(result) {
+    setContractResult(result)
+    setContractKey(k => k + 1)
+    setActive(3)
   }
 
-  if (!auth) {
-    return <PinLock onUnlock={() => setAuth(true)} />;
+  function handleNewContract() {
+    setContractResult(null)
+    setActive(2)
   }
 
-  // 서명·완료 화면에서는 탭바 숨김 (고객 앞 화면)
-  const hideTabBar = tab === 'contract' && (contractScreen === 'step2' || contractScreen === 'step3');
+  if (!splashDone) {
+    return (
+      <SplashScreen
+        onDone={() => {
+          sessionStorage.setItem('contract.splashDone', '1')
+          setSplashDone(true)
+        }}
+      />
+    )
+  }
+
+  if (!unlocked) {
+    return (
+      <PinLock
+        onUnlock={() => {
+          sessionStorage.setItem('contract.unlocked', '1')
+          setUnlocked(true)
+        }}
+      />
+    )
+  }
 
   return (
-    <ContractProvider>
-      {!hideTabBar && (
-        <nav className="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 z-50 flex safe-area-bottom">
-          {TABS.map(t => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className={`flex-1 py-4 text-base font-semibold transition ${
-                tab === t.key ? 'text-blue-400' : 'text-gray-500'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </nav>
-      )}
-
-      <div className={hideTabBar ? '' : 'pb-16'}>
-        {tab === 'listings' && <ListingsTab />}
-        {tab === 'settings' && <SettingsTab />}
-
-        {tab === 'contract' && contractScreen === 'step1' && (
-          <Step1Form
-            onNext={() => setContractScreen('step2')}
-            onList={() => setContractScreen('list')}
-          />
-        )}
-        {tab === 'contract' && contractScreen === 'step2' && (
-          <Step2Sign
-            onNext={() => setContractScreen('step3')}
-            onBack={() => setContractScreen('step1')}
-          />
-        )}
-        {tab === 'contract' && contractScreen === 'step3' && (
-          <Step3Done onNew={() => setContractScreen('step1')} />
-        )}
-        {tab === 'contract' && contractScreen === 'list' && (
-          <ContractList onBack={() => setContractScreen('step1')} />
-        )}
+    <div className="flex h-dvh flex-col bg-slate-100">
+      <AppTabs active={active} onSelect={setActive} />
+      <div className="min-h-0 flex-1">
+        <div className={active === 0 ? 'h-full' : 'hidden'}>
+          <ListingTab onActiveCard={setActiveCardKey} />
+        </div>
+        {active === 1 && <NoteTab cardKey={activeCardKey} />}
+        <div className={active === 2 ? 'h-full' : 'hidden'}>
+          <ContractTab key={contractKey} onComplete={handleContractComplete} />
+        </div>
+        {active === 3 && <DeliveryTab result={contractResult} onNewContract={handleNewContract} />}
       </div>
-    </ContractProvider>
-  );
+    </div>
+  )
+}
+
+function Placeholder({ label }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center text-gray-300">
+      <p className="text-sm font-semibold">{label} — 준비 중</p>
+    </div>
+  )
 }
