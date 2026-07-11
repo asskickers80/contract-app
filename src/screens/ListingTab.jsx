@@ -298,31 +298,33 @@ function CardEditor({ card, isNew, initImage, onChange, onBack }) {
 
   return (
     <div className="h-full overflow-y-auto pb-28">
-      <div className="mx-auto mt-4 max-w-2xl space-y-4 px-4">
+      {/* 헤더 */}
+      <div className="mx-auto mt-4 max-w-2xl px-4">
         <div className="flex items-center justify-between">
           <button onClick={onBack} className="rounded-xl px-3 py-2 text-sm font-bold text-gray-500 active:bg-gray-100">← 목록으로</button>
           <span className="text-sm font-bold text-gray-900">{isNew ? '새 매물카드' : '매물카드'}</span>
           <span className="w-16" />
         </div>
+      </div>
 
-        {/* 캡처 이미지 */}
-        <section className="rounded-2xl bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-gray-500">캡처 · 메모</h2>
-            <button onClick={() => imageFileRef.current?.click()}
-              className="rounded-lg bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600 active:bg-gray-200">
-              {board?.image ? '이미지 교체' : '이미지 추가'}
-            </button>
-            <input ref={imageFileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-          </div>
-          <div className="mt-3">
-            {board?.image
-              ? <CaptureBoard board={board} onBoardChange={setBoard} />
-              : <p className="py-4 text-center text-xs text-gray-300">이미지 추가 버튼으로 사진첩에서 불러올 수 있어요</p>
-            }
-          </div>
-        </section>
+      {/* 캡처 이미지 — 전체 폭: 불러온 그림이 앱 화면을 가득 채운다 */}
+      <section className="mt-3 bg-white px-2 py-3 shadow-sm">
+        <div className="mx-auto mb-2 flex max-w-2xl items-center justify-between px-2">
+          <h2 className="text-sm font-bold text-gray-500">캡처 · 메모</h2>
+          <button onClick={() => imageFileRef.current?.click()}
+            className="rounded-lg bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600 active:bg-gray-200">
+            {board?.image ? '이미지 교체' : '이미지 추가'}
+          </button>
+          <input ref={imageFileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+        </div>
+        {board?.image
+          ? <CaptureBoard board={board} onBoardChange={setBoard} />
+          : <p className="py-8 text-center text-xs text-gray-300">이미지 추가 버튼으로 사진첩에서 불러올 수 있어요</p>
+        }
+      </section>
 
+      {/* 폼 */}
+      <div className="mx-auto mt-4 max-w-2xl space-y-4 px-4">
         {/* 고객 */}
         <section className="rounded-2xl bg-white p-4 shadow-sm">
           <h2 className="text-sm font-bold text-gray-500">고객</h2>
