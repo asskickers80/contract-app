@@ -49,8 +49,8 @@ export default function CaptureBoard({ board, onBoardChange }) {
   if (!board?.image) return null
 
   return (
-    <div>
-      <div className="flex items-center gap-2 pb-2">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex shrink-0 items-center gap-2 pb-2">
         <button
           onClick={addNote}
           className="h-10 rounded-xl bg-amber-400 px-4 text-sm font-bold text-amber-950 shadow-sm active:bg-amber-500"
@@ -65,12 +65,12 @@ export default function CaptureBoard({ board, onBoardChange }) {
 
       <div
         ref={containerRef}
-        className="relative select-none overflow-hidden rounded-xl border border-gray-200 shadow-sm"
+        className="relative min-h-0 flex-1 select-none overflow-hidden rounded-xl border border-gray-200 bg-gray-50 shadow-sm"
         onPointerMove={onDrag}
         onPointerUp={() => { dragRef.current = null }}
         onPointerCancel={() => { dragRef.current = null }}
       >
-        <img src={board.image} alt="캡처된 화면" className="block w-full" draggable={false} />
+        <img src={board.image} alt="캡처된 화면" className="h-full w-full object-contain" draggable={false} />
 
         {notes.map(note => (
           <PostItNote
