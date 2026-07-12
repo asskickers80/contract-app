@@ -12,8 +12,8 @@ const SignPad = forwardRef(function SignPad({ height = 160, disabled = false, on
     const canvas = canvasRef.current
     const pad = new SignaturePad(canvas, {
       penColor: '#111827',
-      minWidth: 1,
-      maxWidth: 2.5,
+      minWidth: 1.8,  // 계약서에 축소되어 들어가므로 획을 굵게 잡는다
+      maxWidth: 4.5,
     })
     padRef.current = pad
 
