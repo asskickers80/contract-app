@@ -57,7 +57,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-dvh flex-col bg-slate-100">
+    <div className="flex h-dvh flex-col bg-surface text-fg">
       <AppTabs active={active} onSelect={setActive} />
       <div className="min-h-0 flex-1">
         <div className={active === 0 ? 'h-full' : 'hidden'}>

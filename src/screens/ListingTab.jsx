@@ -74,13 +74,13 @@ function HomeScreen({ onNew, onLibrary }) {
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-6 px-8">
-      <h1 className="text-2xl font-bold text-gray-800">캡처 뷰어</h1>
-      <p className="text-sm text-gray-400">캡처 이미지에 포스트잇 메모를 붙여 보관하세요</p>
+      <h1 className="text-2xl font-extrabold text-fg">캡처 뷰어</h1>
+      <p className="text-sm text-fg-hint">캡처 이미지에 포스트잇 메모를 붙여 보관하세요</p>
 
       <div className="flex w-full max-w-sm flex-col gap-4">
         <button
           onClick={() => fileRef.current?.click()}
-          className="flex flex-col items-center gap-2 rounded-2xl bg-blue-600 px-6 py-8 text-white active:bg-blue-700"
+          className="flex flex-col items-center gap-2 rounded-2xl bg-primary px-6 py-8 text-on-primary shadow-card active:opacity-90"
         >
           <span className="text-4xl">📷</span>
           <span className="text-lg font-bold">신규</span>
@@ -89,11 +89,11 @@ function HomeScreen({ onNew, onLibrary }) {
 
         <button
           onClick={onLibrary}
-          className="flex flex-col items-center gap-2 rounded-2xl bg-white px-6 py-8 shadow-sm active:bg-gray-50"
+          className="flex flex-col items-center gap-2 rounded-2xl bg-card px-6 py-8 shadow-card active:opacity-80"
         >
           <span className="text-4xl">📁</span>
-          <span className="text-lg font-bold text-gray-800">불러오기</span>
-          <span className="text-xs text-gray-400">저장된 캡처 보드를 이어서 편집해요</span>
+          <span className="text-lg font-bold text-fg">불러오기</span>
+          <span className="text-xs text-fg-hint">저장된 캡처 보드를 이어서 편집해요</span>
         </button>
       </div>
 
@@ -105,7 +105,7 @@ function HomeScreen({ onNew, onLibrary }) {
         onChange={handleFileChange}
       />
 
-      <p className="text-[11px] text-gray-300">버전 {__BUILD_TIME__} 빌드</p>
+      <p className="text-[11px] text-fg-disabled">버전 {__BUILD_TIME__} 빌드</p>
     </div>
   )
 }
@@ -131,27 +131,27 @@ function LibraryScreen({ onOpen, onBack }) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-gray-200 bg-white px-4 py-3">
-        <button onClick={onBack} className="rounded-xl px-3 py-1.5 text-sm font-bold text-gray-500 active:bg-gray-100">← 뒤로</button>
-        <span className="font-bold text-gray-900">불러오기</span>
+      <div className="flex items-center gap-2 px-5 py-3">
+        <button onClick={onBack} className="rounded-full px-3 py-1.5 text-[13.5px] font-semibold text-fg-2 active:bg-chip">← 뒤로</button>
+        <span className="text-base font-extrabold text-fg">불러오기</span>
       </div>
 
       <div className="flex-1 overflow-y-auto pb-6">
-        {loading && <p className="py-10 text-center text-sm text-gray-300">불러오는 중…</p>}
+        {loading && <p className="py-10 text-center text-sm text-fg-hint">불러오는 중…</p>}
 
         {!loading && (
           <div className="mx-auto max-w-2xl p-4">
-            {captures.length === 0 && <p className="py-10 text-center text-sm text-gray-300">저장된 캡처 보드가 없어요</p>}
+            {captures.length === 0 && <p className="py-10 text-center text-sm text-fg-hint">저장된 캡처 보드가 없어요</p>}
             <div className="grid grid-cols-2 gap-3">
               {captures.map(entry => (
                 <div key={entry.key} onClick={() => onOpen(entry)}
-                  className="relative cursor-pointer overflow-hidden rounded-xl bg-white shadow-sm active:opacity-80">
+                  className="relative cursor-pointer overflow-hidden rounded-xl bg-card shadow-card active:opacity-80">
                   <img src={entry.image} alt="" className="aspect-[4/3] w-full object-cover" />
                   <div className="p-2 text-left">
-                    <p className="text-xs font-semibold text-gray-700">
+                    <p className="text-xs font-semibold text-fg-2">
                       {String(entry.key).startsWith('cap-') ? '캡처 보드' : formatPhone(entry.key)}
                     </p>
-                    <p className="text-[11px] text-gray-400">
+                    <p className="text-[11px] text-fg-hint">
                       {entry.capturedAt ? new Date(entry.capturedAt).toLocaleString('ko-KR') : ''}
                     </p>
                   </div>
@@ -289,38 +289,38 @@ function CaptureViewer({ boardKey, initBoard, onBack, active }) {
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
       {/* 헤더 */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 bg-white px-3 py-2">
-        <button onClick={onBack} className="rounded-xl px-3 py-1.5 text-sm font-bold text-gray-500 active:bg-gray-100">← 목록으로</button>
-        <span className="flex-1 truncate text-center text-sm font-bold text-gray-900">캡처 뷰어</span>
+      <div className="flex shrink-0 items-center gap-2 px-4 py-2">
+        <button onClick={onBack} className="rounded-full px-3 py-1.5 text-[13.5px] font-semibold text-fg-2 active:bg-chip">← 목록으로</button>
+        <span className="flex-1 truncate text-center text-base font-extrabold text-fg">캡처 뷰어</span>
         <button
           onClick={() => (board?.info ? setInfoDraft({ ...board.info }) : handleExtract({ openPanel: true }))}
           disabled={!board?.image || extracting}
-          className="rounded-lg bg-violet-100 px-3 py-1.5 text-xs font-bold text-violet-700 active:bg-violet-200 disabled:opacity-40"
+          className="h-9 rounded-full bg-primary-container px-4 text-[13px] font-semibold text-on-primary-container active:opacity-80 disabled:opacity-40"
         >
           {extracting ? 'AI 읽는 중…' : board?.info ? '매물 정보' : 'AI 읽기'}
         </button>
         <button onClick={() => imageFileRef.current?.click()}
-          className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 active:bg-gray-200">
+          className="h-9 rounded-full border border-line bg-card px-4 text-[13px] font-semibold text-primary active:bg-chip">
           {board?.image ? '이미지 교체' : '이미지 추가'}
         </button>
         <button onClick={handleSave} disabled={!board?.image}
-          className="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-bold text-white active:bg-blue-700 disabled:bg-gray-300">
+          className="h-9 rounded-full bg-primary px-5 text-[13px] font-semibold text-on-primary active:opacity-90 disabled:bg-off-bg disabled:text-off-fg">
           저장
         </button>
         <input ref={imageFileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
       </div>
 
       {notice && (
-        <p className={`shrink-0 px-4 py-2 text-center text-xs font-semibold ${notice.startsWith('저장 실패') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
+        <p className={`mx-4 shrink-0 rounded-xl px-4 py-2 text-center text-xs font-bold ${notice.startsWith('저장 실패') || notice.startsWith('정보 읽기 실패') ? 'bg-danger-container text-on-danger-container' : 'bg-ok text-on-ok'}`}>
           {notice}
         </p>
       )}
 
       {/* 보드: 남은 화면을 전부 차지, 이미지는 object-contain으로 딱 맞춤 */}
-      <div className="min-h-0 flex-1 p-2">
+      <div className="min-h-0 flex-1 px-4 pb-4 pt-1">
         {board?.image
           ? <CaptureBoard board={board} onBoardChange={setBoard} />
-          : <p className="py-8 text-center text-xs text-gray-300">이미지 추가 버튼으로 사진첩에서 불러올 수 있어요</p>
+          : <p className="py-8 text-center text-xs text-fg-hint">이미지 추가 버튼으로 사진첩에서 불러올 수 있어요</p>
         }
       </div>
 
@@ -358,21 +358,21 @@ function InfoPanel({ info, setInfo, extracting, onReextract, onSave, onClose }) 
 
   const field = ([key, label, type]) => (
     <label key={key} className={`block ${type === 'money' ? '' : 'col-span-2'}`}>
-      <span className="text-xs font-semibold text-gray-500">{label}</span>
+      <span className="text-xs font-medium text-fg-2">{label}</span>
       {type === 'money' ? (
         <div className="mt-1 flex items-center gap-1">
           <input type="text" inputMode="numeric"
             value={info[key] == null || info[key] === '' ? '' : formatComma(info[key])}
             onChange={e => set(key, e.target.value.trim() === '' ? null : parseAmount(e.target.value))}
-            className="w-full min-w-0 rounded-xl border border-gray-300 px-2 py-2.5 text-right text-base focus:border-blue-500 focus:outline-none" />
-          <span className="shrink-0 text-xs text-gray-400">원</span>
+            className="w-full min-w-0 rounded-xl bg-field px-3 py-2.5 text-right text-base font-bold text-fg focus:outline-none focus:ring-2 focus:ring-primary" />
+          <span className="shrink-0 text-xs text-fg-hint">원</span>
         </div>
       ) : (
         <input type={type === 'phone' ? 'tel' : 'text'}
           inputMode={type === 'phone' || type === 'biz' ? 'numeric' : undefined}
           value={type === 'biz' ? formatBizNo(info[key] || '') : (info[key] || '')}
           onChange={e => set(key, type === 'phone' ? formatPhone(e.target.value) : type === 'biz' ? formatBizNo(e.target.value) : e.target.value)}
-          className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2.5 text-base focus:border-blue-500 focus:outline-none" />
+          className="mt-1 w-full rounded-xl bg-field px-3.5 py-2.5 text-base font-semibold text-fg focus:outline-none focus:ring-2 focus:ring-primary" />
       )}
     </label>
   )
@@ -380,29 +380,29 @@ function InfoPanel({ info, setInfo, extracting, onReextract, onSave, onClose }) 
   return (
     <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
       <div
-        className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+        className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl bg-card shadow-xl"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-center gap-2 border-b border-gray-100 px-4 py-3">
+        <div className="flex shrink-0 items-center gap-2 px-4 py-3">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-gray-900">매물 정보</p>
-            <p className="text-[11px] text-gray-400">AI가 읽은 내용이에요 — 확인·수정 후 저장하세요</p>
+            <p className="text-sm font-extrabold text-fg">매물 정보</p>
+            <p className="text-[11px] text-fg-hint">AI가 읽은 내용이에요 — 확인·수정 후 저장하세요</p>
           </div>
           <button onClick={onReextract} disabled={extracting}
-            className="rounded-lg bg-violet-100 px-3 py-2 text-xs font-bold text-violet-700 active:bg-violet-200 disabled:opacity-40">
+            className="rounded-full bg-primary-container px-3.5 py-2 text-xs font-semibold text-on-primary-container active:opacity-80 disabled:opacity-40">
             {extracting ? '읽는 중…' : '다시 읽기'}
           </button>
           <button onClick={onClose}
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-lg text-gray-400 active:bg-gray-100">✕</button>
+            className="flex h-11 w-11 items-center justify-center rounded-full text-lg text-fg-2 active:bg-chip">✕</button>
         </div>
 
         <div className="grid flex-1 grid-cols-2 gap-x-3 gap-y-3 overflow-y-auto px-4 py-3">
           {INFO_FIELDS.map(field)}
         </div>
 
-        <div className="shrink-0 border-t border-gray-100 p-3">
+        <div className="shrink-0 p-3">
           <button onClick={onSave}
-            className="w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white active:bg-blue-700">
+            className="w-full rounded-full bg-primary py-3 text-sm font-bold text-on-primary active:opacity-90">
             정보 저장
           </button>
         </div>

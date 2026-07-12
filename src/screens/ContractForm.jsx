@@ -7,10 +7,19 @@ import { isSupabaseConfigured } from '../lib/supabase.js'
 
 const PERIOD_OPTIONS = [1, 3, 6, 12]
 
+// 섹션 타이틀 "제목 (보조설명)" — 보조 괄호 부분은 힌트색으로 분리 표시
+function splitTitle(title) {
+  const m = title.match(/^(.*?)\s*(\(.*\))$/)
+  return m ? [m[1], m[2]] : [title, null]
+}
+
 function Section({ title, children }) {
+  const [main, sub] = splitTitle(title)
   return (
-    <section className="rounded-2xl bg-white p-4 shadow-sm">
-      <h2 className="text-sm font-bold text-gray-500">{title}</h2>
+    <section className="rounded-2xl bg-card p-4 shadow-card">
+      <h2 className="text-sm font-extrabold text-fg">
+        {main} {sub && <span className="text-xs font-normal text-fg-hint">{sub}</span>}
+      </h2>
       <div className="mt-3">{children}</div>
     </section>
   )
@@ -19,8 +28,8 @@ function Section({ title, children }) {
 function TextInput({ label, value, onChange, placeholder, required, inputMode, autoComplete = 'off' }) {
   return (
     <label className="block">
-      <span className="text-[13px] font-semibold text-gray-700">
-        {label} {required && <span className="text-red-500">*</span>}
+      <span className="text-xs font-medium text-fg-2">
+        {label} {required && <span className="text-danger">*</span>}
       </span>
       <input
         type="text"
@@ -29,7 +38,7 @@ function TextInput({ label, value, onChange, placeholder, required, inputMode, a
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-3 text-base focus:border-blue-500 focus:outline-none"
+        className="mt-1 w-full rounded-xl bg-field px-3.5 py-3 text-base font-semibold text-fg placeholder:font-normal placeholder:text-fg-hint focus:outline-none focus:ring-2 focus:ring-primary"
       />
     </label>
   )
@@ -72,7 +81,7 @@ export default function ContractForm({ draft, onChange, onGenerate }) {
     <div className="pb-32">
       <div className="mx-auto mt-4 max-w-2xl space-y-4 px-4">
         {!isSupabaseConfigured && (
-          <p className="rounded-xl bg-amber-50 px-4 py-2.5 text-xs leading-relaxed text-amber-800">
+          <p className="rounded-xl bg-warn px-4 py-2.5 text-xs leading-relaxed text-on-warn">
             Supabase 미설정 — PDF 생성·전달은 되지만 저장·목록은 동작하지 않아요. (설정 ⚙ 참고)
           </p>
         )}
@@ -81,7 +90,7 @@ export default function ContractForm({ draft, onChange, onGenerate }) {
           <div className="space-y-4">
             <TextInput label="상호" required value={draft.storeName} onChange={v => set({ storeName: v })} placeholder="예: 행복분식" />
             <div>
-              <span className="text-[13px] font-semibold text-gray-700">업종 <span className="text-red-500">*</span></span>
+              <span className="text-xs font-medium text-fg-2">업종 <span className="text-danger">*</span></span>
               <div className="mt-1">
                 <CategoryPicker value={draft.businessType} onSelect={v => set({ businessType: v })} />
               </div>
@@ -96,75 +105,79 @@ export default function ContractForm({ draft, onChange, onGenerate }) {
         </Section>
 
         <Section title="광고 상품 선택 (탭 한 번으로 금액 입력)">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2.5">
             {PRODUCTS.map(p => (
               <button key={p.key} onClick={() => selectProduct(p)}
-                className={`rounded-xl border-2 px-2 py-3 text-center ${draft.productKey === p.key ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white'}`}>
-                <div className={`text-sm font-bold ${draft.productKey === p.key ? 'text-blue-700' : 'text-gray-900'}`}>{p.name}</div>
-                <div className="mt-1 text-xs text-gray-500">총 {p.total.toLocaleString('ko-KR')}원</div>
+                className={`rounded-xl border px-2 py-3 text-center transition-colors duration-150 ${
+                  draft.productKey === p.key ? 'border-2 border-primary bg-inset' : 'border-line bg-card'
+                }`}>
+                <div className={`text-sm font-bold ${draft.productKey === p.key ? 'text-primary' : 'text-fg'}`}>{p.name}</div>
+                <div className="mt-1 text-xs text-fg-2">총 <span className="font-extrabold text-fg">{p.total.toLocaleString('ko-KR')}</span>원</div>
               </button>
             ))}
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-2">
+          <div className="mt-4 grid grid-cols-3 gap-2.5">
             <label className="block">
-              <span className="text-xs font-semibold text-gray-500">광고료</span>
+              <span className="text-xs font-medium text-fg-2">광고료</span>
               <input type="text" inputMode="numeric" value={formatComma(draft.fee)} onChange={e => changeFee(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-300 px-2 py-2.5 text-right text-sm focus:border-blue-500 focus:outline-none" />
+                className="mt-1 w-full rounded-xl bg-field px-3 py-2.5 text-right text-base font-bold text-fg focus:outline-none focus:ring-2 focus:ring-primary" />
             </label>
             <label className="block">
-              <span className="text-xs font-semibold text-gray-500">부가세</span>
+              <span className="text-xs font-medium text-fg-2">부가세</span>
               <input type="text" inputMode="numeric" value={formatComma(draft.vat)} onChange={e => changeVat(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-300 px-2 py-2.5 text-right text-sm focus:border-blue-500 focus:outline-none" />
+                className="mt-1 w-full rounded-xl bg-field px-3 py-2.5 text-right text-base font-bold text-fg focus:outline-none focus:ring-2 focus:ring-primary" />
             </label>
             <label className="block">
-              <span className="text-xs font-semibold text-gray-500">총액</span>
+              <span className="text-xs font-medium text-fg-2">총액</span>
               <input type="text" inputMode="numeric" value={formatComma(draft.total)} onChange={e => changeTotal(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-300 bg-blue-50 px-2 py-2.5 text-right text-sm font-bold focus:border-blue-500 focus:outline-none" />
+                className="mt-1 w-full rounded-xl bg-field-em px-3 py-2.5 text-right text-base font-bold text-fg focus:outline-none focus:ring-2 focus:ring-primary" />
             </label>
           </div>
-          <p className="mt-2 text-xs text-gray-400">광고료를 고치면 부가세(10%)와 총액이 자동 계산됩니다.</p>
+          <p className="mt-2 text-[11px] text-fg-hint">광고료를 고치면 부가세(10%)와 총액이 자동 계산됩니다.</p>
         </Section>
 
         <Section title="기본값 (필요 시 수정)">
           <div className="space-y-4">
             {/* 담당 에이전트 고정 — 수정 불가 (2026-07-12 대표님 지시) */}
-            <div className="rounded-xl bg-gray-50 px-3 py-2.5 text-sm text-gray-600">
-              담당 에이전트 <span className="font-bold text-gray-900">{draft.agentName}</span>
-              <span className="ml-1 text-xs text-gray-400">(고정)</span>
+            <div className="rounded-xl bg-inset px-3.5 py-2.5 text-sm text-fg-2">
+              담당 에이전트 <span className="font-bold text-fg">{draft.agentName}</span>
+              <span className="ml-1 text-xs text-fg-hint">(고정)</span>
             </div>
             <TextInput label="광고상품명" value={draft.productName} onChange={v => set({ productName: v })} />
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
-                <span className="text-[13px] font-semibold text-gray-700">광고개시일</span>
+                <span className="text-xs font-medium text-fg-2">광고개시일</span>
                 <input type="date" value={draft.startDate} onChange={e => changeStartDate(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-3 text-base focus:border-blue-500 focus:outline-none" />
-                <p className="mt-1 text-xs text-gray-400">{formatKoreanDate(draft.startDate)}</p>
+                  className="mt-1 w-full rounded-xl bg-field px-3.5 py-3 text-base font-semibold text-fg focus:outline-none focus:ring-2 focus:ring-primary" />
+                <p className="mt-1 text-[11px] text-fg-hint">{formatKoreanDate(draft.startDate)}</p>
               </label>
               <div>
-                <span className="text-[13px] font-semibold text-gray-700">광고기간</span>
+                <span className="text-xs font-medium text-fg-2">광고기간</span>
                 <div className="mt-1 flex gap-1.5">
                   {PERIOD_OPTIONS.map(m => (
                     <button key={m} onClick={() => changePeriod(m)}
-                      className={`flex-1 rounded-xl border-2 py-3 text-sm font-bold ${draft.periodMonths === m ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600'}`}>
+                      className={`flex-1 rounded-full py-3 text-sm font-bold transition-colors duration-150 ${
+                        draft.periodMonths === m ? 'bg-primary-container text-on-primary-container' : 'bg-chip text-fg-2'
+                      }`}>
                       {m}개월
                     </button>
                   ))}
                 </div>
               </div>
             </div>
-            <div className="rounded-xl bg-gray-50 px-3 py-2.5 text-sm text-gray-600">
-              광고종료일 <span className="font-bold text-gray-900">{formatKoreanDate(draft.endDate) || '—'}</span>
-              <span className="ml-1 text-xs text-gray-400">(개시일 + {draft.periodMonths}개월, 자동 계산)</span>
+            <div className="rounded-xl bg-inset px-3.5 py-2.5 text-sm text-fg-2">
+              광고종료일 <span className="font-bold text-fg">{formatKoreanDate(draft.endDate) || '—'}</span>
+              <span className="ml-1 text-xs text-fg-hint">(개시일 + {draft.periodMonths}개월, 자동 계산)</span>
             </div>
           </div>
         </Section>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 border-t border-gray-200 bg-white/95 p-4 backdrop-blur">
+      <div className="fixed inset-x-0 bottom-0 bg-surface/95 p-4 backdrop-blur">
         <div className="mx-auto max-w-2xl">
-          {!ready && <p className="mb-2 text-center text-xs text-red-500">입력 필요: {missing.join(', ')}</p>}
+          {!ready && <p className="mb-2 text-center text-[12.5px] font-semibold text-danger">입력 필요: {missing.join(', ')}</p>}
           <button onClick={onGenerate} disabled={!ready}
-            className="w-full rounded-2xl bg-blue-600 py-4 text-base font-bold text-white active:bg-blue-700 disabled:bg-gray-300">
+            className="w-full rounded-full bg-primary py-3.5 text-[15px] font-bold text-on-primary transition-colors duration-150 active:opacity-90 disabled:bg-off-bg disabled:text-off-fg">
             계약서 생성
           </button>
         </div>

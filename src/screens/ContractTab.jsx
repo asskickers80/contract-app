@@ -71,7 +71,7 @@ export default function ContractTab({ onComplete, cardKey, active }) {
   }, [active, cardKey])
 
   return (
-    <div className="flex h-full flex-col bg-slate-100">
+    <div className="flex h-full flex-col bg-surface">
       <StepProgress
         step={step}
         onBackToInput={() => setStep('input')}

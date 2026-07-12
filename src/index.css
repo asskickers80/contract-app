@@ -1,5 +1,118 @@
 @import "tailwindcss";
 
+/* ── 머티리얼 토널 디자인 토큰 (2026-07-13 대표님 확정 디자인 README 기준) ──
+   라이트/다크 두 세트. 다크 전환은 <html data-theme="dark"> 스왑으로 동작. */
+:root {
+  --surface: #F0F4F9;
+  --card: #FFFFFF;
+  --primary: #0B57D0;
+  --on-primary: #FFFFFF;
+  --primary-container: #D3E3FD;
+  --on-primary-container: #041E49;
+  --field: #E9EEF6;
+  --field-emphasis: #DCE8FB;
+  --inset: #F7FAFE;
+  --inset-line: #E8EDF4;
+  --chip: #EEF2F8;
+  --chip-ghost: #F3F6FA;
+  --fg: #1F1F1F;
+  --fg-2: #444746;
+  --fg-hint: #8B9199;
+  --fg-disabled: #A5ABB3;
+  --line: #DFE3EA;
+  --line-strong: #C4C7C5;
+  --warn: #FFE9A3;
+  --on-warn: #6F5000;
+  --ok: #C4EED0;
+  --on-ok: #0F5223;
+  --danger: #B3261E;
+  --danger-container: #F9DEDC;
+  --on-danger-container: #410E0B;
+  --cta-black: #131314;
+  --on-cta-black: #FFFFFF;
+  --off-bg: #E3E6EB;
+  --off-fg: #9AA0A6;
+  --note-paper: #FFFDF5;
+  --note-line: rgba(176, 146, 60, .2);
+  --note-divider: #F0EDE2;
+  --shadow-card: 0 1px 3px rgba(23, 48, 92, .08);
+  --shadow-track: 0 1px 2px rgba(23, 48, 92, .07);
+}
+
+[data-theme="dark"] {
+  --surface: #131314;
+  --card: #1E1F20;
+  --primary: #A8C7FA;
+  --on-primary: #062E6F;
+  --primary-container: #33415C;
+  --on-primary-container: #D3E3FD;
+  --field: #2A2B2E;
+  --field-emphasis: #33415C;
+  --inset: #232426;
+  --inset-line: #3A3B3E;
+  --chip: #2A2B2E;
+  --chip-ghost: #232426;
+  --fg: #E3E3E3;
+  --fg-2: #C4C7C5;
+  --fg-hint: #8F9396;
+  --fg-disabled: #757779;
+  --line: #3A3B3E;
+  --line-strong: #4A4B4E;
+  --warn: #3B300F;
+  --on-warn: #E2B34C;
+  --ok: #1E3A28;
+  --on-ok: #7CD99A;
+  --danger: #F2B8B5;
+  --danger-container: #8C1D18;
+  --on-danger-container: #F9DEDC;
+  --cta-black: #E3E3E3;
+  --on-cta-black: #131314;
+  --off-bg: #2A2B2E;
+  --off-fg: #757779;
+  --note-paper: #232426;
+  --note-line: rgba(255, 255, 255, .06);
+  --note-divider: #3A3B3E;
+  --shadow-card: none; /* 다크에서는 면 톤 차이만 사용 */
+  --shadow-track: none;
+}
+
+/* Tailwind 유틸리티에 토큰 연결 — bg-card, text-fg-2, border-line 등으로 사용 */
+@theme inline {
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-primary-container: var(--primary-container);
+  --color-on-primary-container: var(--on-primary-container);
+  --color-field: var(--field);
+  --color-field-em: var(--field-emphasis);
+  --color-inset: var(--inset);
+  --color-inset-line: var(--inset-line);
+  --color-chip: var(--chip);
+  --color-chip-ghost: var(--chip-ghost);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-fg-hint: var(--fg-hint);
+  --color-fg-disabled: var(--fg-disabled);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-warn: var(--warn);
+  --color-on-warn: var(--on-warn);
+  --color-ok: var(--ok);
+  --color-on-ok: var(--on-ok);
+  --color-danger: var(--danger);
+  --color-danger-container: var(--danger-container);
+  --color-on-danger-container: var(--on-danger-container);
+  --color-cta: var(--cta-black);
+  --color-on-cta: var(--on-cta-black);
+  --color-off-bg: var(--off-bg);
+  --color-off-fg: var(--off-fg);
+}
+
+/* 카드/스텝바 그림자 (다크에서는 토큰이 none) */
+.shadow-card { box-shadow: var(--shadow-card); }
+.shadow-track { box-shadow: var(--shadow-track); }
+
 html {
   -webkit-text-size-adjust: 100%;
 }
@@ -10,7 +123,12 @@ html, body {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif;
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  letter-spacing: -0.01em;
+  word-break: keep-all;
+  font-variant-numeric: tabular-nums; /* 모든 금액·숫자 고정폭 */
+  background: var(--surface);
+  color: var(--fg);
   -webkit-tap-highlight-color: transparent;
 }
 

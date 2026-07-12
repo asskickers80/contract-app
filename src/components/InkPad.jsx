@@ -251,43 +251,51 @@ export default function InkPad({ initialStrokes, onCommit }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* 도구 막대 (좁은 화면에서는 줄바꿈) */}
-      <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-gray-100 bg-white px-3 py-1.5">
+      <div className="flex shrink-0 flex-wrap items-center gap-1 bg-card px-3 py-1.5">
         {/* 도구: 펜 / 연필 / 지우개 */}
-        <div className="flex overflow-hidden rounded-lg bg-gray-100 p-0.5">
+        <div className="flex rounded-full bg-chip p-[3px]">
           {[['pen', '펜'], ['pencil', '연필'], ['eraser', '지우개']].map(([key, label]) => (
             <button key={key} onClick={() => pickTool(key)}
-              className={`rounded-md px-3 py-2.5 text-sm font-bold ${
+              className={`rounded-full px-3.5 py-2.5 text-sm font-bold transition-colors duration-150 ${
                 tool === key
-                  ? key === 'eraser' ? 'bg-pink-100 text-pink-700 shadow-sm' : 'bg-white text-gray-800 shadow-sm'
-                  : 'text-gray-400'
+                  ? key === 'eraser' ? 'bg-danger-container text-on-danger-container' : 'bg-primary-container text-on-primary-container'
+                  : 'text-fg-2'
               }`}>
               {label}
             </button>
           ))}
         </div>
-        <span className="mx-1 h-6 w-px bg-gray-200" />
+        <span className="mx-1.5" />
         {COLORS.map(c => (
           <button key={c} onClick={() => { setColor(c); if (tool === 'eraser') setTool(lastDrawTool.current) }}
             aria-label={`펜 색 ${c}`}
-            className={`flex h-11 w-9 items-center justify-center rounded-lg ${color === c && tool !== 'eraser' ? 'bg-gray-100' : ''}`}>
-            <span className="h-6 w-6 rounded-full border border-black/10" style={{ backgroundColor: c }} />
+            className="flex h-11 w-9 items-center justify-center">
+            <span
+              className="h-5 w-5 rounded-full"
+              style={{
+                backgroundColor: c,
+                boxShadow: color === c && tool !== 'eraser' ? `0 0 0 2px var(--card), 0 0 0 3.5px ${c}` : 'inset 0 0 0 1px rgba(0,0,0,.1)',
+              }}
+            />
           </button>
         ))}
-        <span className="mx-1 h-6 w-px bg-gray-200" />
+        <span className="mx-1.5" />
         {SIZES.map(s => (
           <button key={s} onClick={() => { setSize(s); if (tool === 'eraser') setTool(lastDrawTool.current) }}
             aria-label={`펜 굵기 ${s}`}
-            className={`flex h-11 w-10 items-center justify-center rounded-lg ${size === s && tool !== 'eraser' ? 'bg-gray-100' : ''}`}>
-            <span className="rounded-full bg-gray-800" style={{ width: s * 2 + 3, height: s * 2 + 3 }} />
+            className="flex h-11 w-10 items-center justify-center">
+            <span className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors duration-150 ${size === s && tool !== 'eraser' ? 'bg-primary-container' : ''}`}>
+              <span className="rounded-full bg-fg" style={{ width: s * 2 + 3, height: s * 2 + 3 }} />
+            </span>
           </button>
         ))}
         <div className="flex-1" />
         <button onClick={undo} disabled={!undoRef.current.length}
-          className="flex h-11 w-11 items-center justify-center rounded-lg text-xl text-gray-500 active:bg-gray-100 disabled:opacity-30">
+          className="flex h-11 w-11 items-center justify-center rounded-full text-xl text-fg-2 active:bg-chip disabled:opacity-30">
           ↩
         </button>
         <button onClick={clearAll}
-          className="flex h-11 items-center justify-center rounded-lg px-3 text-sm text-gray-400 active:bg-gray-100">
+          className="flex h-11 items-center justify-center rounded-full px-3 text-[12.5px] font-semibold text-fg-2 active:bg-chip">
           모두 지우기
         </button>
       </div>
@@ -303,8 +311,9 @@ export default function InkPad({ initialStrokes, onCommit }) {
           className="block w-full"
           style={{
             touchAction: 'none', // 브라우저 터치 스크롤 차단 — 손바닥에 종이가 밀리지 않게
-            backgroundColor: '#fffdf7',
-            backgroundImage: 'repeating-linear-gradient(transparent, transparent 38px, #ece5d3 38px, #ece5d3 39px)',
+            backgroundColor: 'var(--note-paper)',
+            backgroundImage: 'repeating-linear-gradient(transparent, transparent 38px, var(--note-line) 38px, var(--note-line) 39px)',
+            borderTop: '1px solid var(--note-divider)',
           }}
         />
       </div>

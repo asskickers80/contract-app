@@ -49,13 +49,13 @@ export default function Complete({ result, onNewContract }) {
     <div className="pb-10">
       <div className="mx-auto max-w-2xl px-4 pt-8">
         <div className="text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl">✓</div>
-          <h1 className="mt-3 text-xl font-bold text-gray-900">서명이 완료되었습니다</h1>
-          <p className="mt-1 text-sm text-gray-500">{fileName}</p>
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-ok text-2xl text-on-ok">✓</div>
+          <h1 className="mt-3 text-[19px] font-extrabold text-fg">서명이 완료되었습니다</h1>
+          <p className="mt-1 text-[12.5px] text-fg-2">{fileName}</p>
         </div>
 
         {/* 저장 상태 */}
-        <div className={`mt-6 rounded-2xl px-4 py-3.5 text-sm ${savedRow ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-800'}`}>
+        <div className={`mt-6 rounded-xl px-4 py-3 text-[12.5px] font-bold ${savedRow ? 'bg-ok text-on-ok' : 'bg-warn text-on-warn'}`}>
           {savedRow ? (
             '✓ 계약서가 저장되었습니다.'
           ) : (
@@ -63,7 +63,7 @@ export default function Complete({ result, onNewContract }) {
               <span>저장 안 됨: {saveError}</span>
               {isSupabaseConfigured && (
                 <button onClick={retrySave} disabled={saving}
-                  className="shrink-0 rounded-lg bg-amber-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
+                  className="shrink-0 rounded-full bg-on-warn px-3.5 py-2 text-xs font-bold text-warn disabled:opacity-50">
                   {saving ? '저장 중…' : '다시 저장'}
                 </button>
               )}
@@ -71,55 +71,57 @@ export default function Complete({ result, onNewContract }) {
           )}
         </div>
 
-        {/* 고객에게 보내기 */}
-        <div className="mt-4 rounded-2xl bg-white p-4 shadow-sm">
-          <p className="text-sm font-bold text-gray-900">고객에게 계약서 보내기</p>
-          <p className="mt-1 text-xs text-gray-400">전달 버튼을 누르면 카카오톡·문자·메일·AirDrop 중에서 고를 수 있어요.</p>
+        {/* 고객에게 보내기 · 광고료 결제 — iPad 가로에서 2열 */}
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 sm:items-stretch">
+        <div className="flex flex-col rounded-2xl bg-card p-4 shadow-card">
+          <p className="text-sm font-extrabold text-fg">고객에게 계약서 보내기</p>
+          <p className="mt-1 text-xs leading-relaxed text-fg-2">전달 버튼을 누르면 카카오톡·문자·메일·AirDrop 중에서 고를 수 있어요.</p>
           <button onClick={handleShare}
-            className="mt-3 w-full rounded-2xl bg-blue-600 py-4 text-base font-bold text-white active:bg-blue-700">
+            className="mt-auto w-full rounded-full bg-primary py-3.5 text-sm font-bold text-on-primary active:opacity-90">
             고객에게 보내기 (전달)
           </button>
-          {shareStatus === 'shared' && <p className="mt-2 text-center text-sm font-semibold text-green-600">✓ 전달을 완료했어요</p>}
+          {shareStatus === 'shared' && <p className="mt-2 text-center text-sm font-semibold text-on-ok">✓ 전달을 완료했어요</p>}
           {shareStatus === 'downloaded' && (
-            <p className="mt-2 text-center text-xs text-amber-600">
+            <p className="mt-2 text-center text-xs text-on-warn">
               전달 창 대신 PDF를 다운로드했어요. 파일 앱에서 직접 전달해 주세요.
               (인트라넷 http 주소에서는 iPad 보안 정책상 전달 창이 안 열려요 — 나중에 HTTPS로 배포하면 열립니다)
             </p>
           )}
           <button onClick={() => downloadBlob(pdfBlob, fileName)}
-            className="mt-2 w-full rounded-xl py-2.5 text-sm text-gray-400 underline active:bg-gray-50">
+            className="mt-2 w-full rounded-full py-2.5 text-[12.5px] font-semibold text-primary underline underline-offset-2 active:bg-chip">
             PDF 다운로드
           </button>
         </div>
 
         {/* 광고료 결제 */}
-        <div className="mt-4 rounded-2xl bg-white p-4 shadow-sm">
-          <p className="text-sm font-bold text-gray-900">광고료 결제</p>
-          <div className="mt-2 rounded-xl bg-slate-50 px-4 py-3 text-center">
-            <p className="text-xs text-gray-400">결제할 총액</p>
-            <p className="text-3xl font-bold text-gray-900">{totalText}<span className="text-base font-semibold">원</span></p>
+        <div className="flex flex-col rounded-2xl bg-card p-4 shadow-card">
+          <p className="text-sm font-extrabold text-fg">광고료 결제</p>
+          <div className="mt-2 rounded-xl bg-field px-4 py-3 text-center">
+            <p className="text-[11px] text-fg-2">결제할 총액</p>
+            <p className="text-[22px] font-extrabold text-fg">{totalText}<span className="text-[13px] font-semibold">원</span></p>
           </div>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <button onClick={() => handleCopy('amount', String(contract.total))}
-              className="rounded-xl border border-gray-200 py-3 text-sm font-semibold text-gray-700 active:bg-gray-50">
+              className="rounded-full bg-chip py-3 text-[12.5px] font-bold text-primary active:opacity-80">
               {copied === 'amount' ? '✓ 복사됨' : '금액 복사'}
             </button>
             <button onClick={() => handleCopy('reason', `매물광고료 - ${contract.storeName}`)}
-              className="rounded-xl border border-gray-200 py-3 text-sm font-semibold text-gray-700 active:bg-gray-50">
+              className="rounded-full bg-chip py-3 text-[12.5px] font-bold text-primary active:opacity-80">
               {copied === 'reason' ? '✓ 복사됨' : '결제사유(상호) 복사'}
             </button>
           </div>
           <button onClick={openPayment}
-            className="mt-2 w-full rounded-2xl bg-gray-900 py-4 text-base font-bold text-white active:bg-gray-700">
+            className="mt-2 w-full rounded-full bg-cta py-3.5 text-[13px] font-bold text-on-cta active:opacity-90">
             광고료 결제하기 (점포라인 바로결제)
           </button>
-          <p className="mt-2 text-xs leading-relaxed text-gray-400">
+          <p className="mt-2 text-[10.5px] leading-relaxed text-fg-hint">
             결제 페이지에는 금액이 자동으로 들어가지 않아요. 위 버튼으로 금액과 결제사유를 복사한 뒤, 결제 페이지에서 붙여넣어 주세요.
           </p>
         </div>
+        </div>
 
         <div className="mt-6">
-          <button onClick={onNewContract} className="w-full rounded-2xl border-2 border-blue-600 py-3.5 text-sm font-bold text-blue-600 active:bg-blue-50">
+          <button onClick={onNewContract} className="w-full rounded-full border border-line-strong bg-card py-3 text-[13px] font-bold text-primary active:bg-chip">
             + 새 계약서 작성 (계약 탭으로)
           </button>
         </div>

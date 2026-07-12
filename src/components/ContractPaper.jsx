@@ -55,7 +55,17 @@ export default function ContractPaper({ contract }) {
   const [ty, tm, td] = today.split('-').map(Number)
 
   return (
-    <div className="relative bg-white" style={{ containerType: 'inline-size' }}>
+    <div
+      className="relative bg-white"
+      style={{
+        containerType: 'inline-size',
+        // 리스킨(Pretendard·자간 -0.01em·tabular-nums) 격리 — PDF 캔버스와 동일한 서체·자간을
+        // 유지해야 확정 좌표(formLayout.js)와 화면 미리보기가 계속 일치한다. 수정 금지.
+        fontFamily: '-apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+        letterSpacing: 0,
+        fontVariantNumeric: 'normal',
+      }}
+    >
       <img src={FORM_IMAGE} alt="계약서 원본" className="block w-full select-none" draggable={false} />
 
       <Overlay pos={POS.storeName} text={c.storeName} />
