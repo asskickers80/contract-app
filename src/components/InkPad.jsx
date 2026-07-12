@@ -12,6 +12,8 @@ const ERASE_R = 14 // 지우개 반경(논리 px)
 
 export default function InkPad({ initialStrokes, onCommit }) {
   const canvasRef = useRef(null)
+  const scrollRef = useRef(null)
+  const touchesRef = useRef(new Map()) // 화면에 닿아 있는 손가락들 (두 손가락 스크롤용)
   const strokesRef = useRef(initialStrokes || [])
   const undoRef = useRef([])
   const activeRef = useRef(null) // 그리는 중인 획
@@ -93,10 +95,19 @@ export default function InkPad({ initialStrokes, onCommit }) {
     }
   }
 
+  function capture(e) {
+    try { canvasRef.current.setPointerCapture(e.pointerId) } catch { /* 캡처 불가 환경 무시 */ }
+  }
+
   function onDown(e) {
-    if (e.pointerType === 'touch') return // 손가락은 스크롤 전용 (팜 리젝션)
+    // 손바닥/손가락 하나는 완전히 무시(종이 고정), 두 손가락일 때만 스크롤
+    if (e.pointerType === 'touch') {
+      capture(e)
+      touchesRef.current.set(e.pointerId, { y: e.clientY })
+      return
+    }
     e.preventDefault()
-    canvasRef.current.setPointerCapture?.(e.pointerId)
+    capture(e)
     pushUndo()
     if (eraser) {
       modeRef.current = 'erase'
@@ -109,7 +120,17 @@ export default function InkPad({ initialStrokes, onCommit }) {
   }
 
   function onMove(e) {
-    if (e.pointerType === 'touch' || !modeRef.current) return
+    if (e.pointerType === 'touch') {
+      const t = touchesRef.current.get(e.pointerId)
+      if (!t) return
+      // 두 손가락 이상일 때만 스크롤 — 손바닥 하나로는 안 움직인다
+      if (touchesRef.current.size >= 2 && scrollRef.current) {
+        scrollRef.current.scrollTop -= (e.clientY - t.y) / 2 // 손가락 2개 평균만큼 이동
+      }
+      t.y = e.clientY
+      return
+    }
+    if (!modeRef.current) return
     // coalesced events로 획을 부드럽게 (펜슬 고빈도 입력 반영)
     const events = e.nativeEvent.getCoalescedEvents?.() || [e]
     if (modeRef.current === 'erase') {
@@ -126,7 +147,11 @@ export default function InkPad({ initialStrokes, onCommit }) {
     }
   }
 
-  function onUp() {
+  function onUp(e) {
+    if (e?.pointerType === 'touch') {
+      touchesRef.current.delete(e.pointerId)
+      return
+    }
     const mode = modeRef.current
     modeRef.current = null
     if (mode === 'draw' && activeRef.current) {
@@ -179,6 +204,7 @@ export default function InkPad({ initialStrokes, onCommit }) {
           className={`flex h-11 items-center justify-center rounded-lg px-3 text-sm font-semibold ${eraser ? 'bg-pink-100 text-pink-700' : 'text-gray-500'}`}>
           지우개
         </button>
+        <span className="ml-2 hidden text-[11px] text-gray-300 sm:inline">두 손가락으로 스크롤</span>
         <div className="flex-1" />
         <button onClick={undo} disabled={!undoRef.current.length}
           className="flex h-11 w-11 items-center justify-center rounded-lg text-xl text-gray-500 active:bg-gray-100 disabled:opacity-30">
@@ -190,8 +216,8 @@ export default function InkPad({ initialStrokes, onCommit }) {
         </button>
       </div>
 
-      {/* 필기 영역 — 손가락 스크롤, 펜슬 필기 */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      {/* 필기 영역 — 펜슬 필기, 손바닥 무시(종이 고정), 두 손가락 스크롤 */}
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <canvas
           ref={canvasRef}
           onPointerDown={onDown}
@@ -200,7 +226,7 @@ export default function InkPad({ initialStrokes, onCommit }) {
           onPointerCancel={onUp}
           className="block w-full"
           style={{
-            touchAction: 'pan-y', // 손가락은 세로 스크롤, 펜은 필기
+            touchAction: 'none', // 브라우저 터치 스크롤 차단 — 손바닥에 종이가 밀리지 않게
             backgroundColor: '#fffdf7',
             backgroundImage: 'repeating-linear-gradient(transparent, transparent 38px, #ece5d3 38px, #ece5d3 39px)',
           }}
