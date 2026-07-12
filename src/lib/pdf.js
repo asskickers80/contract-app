@@ -121,16 +121,13 @@ async function prepareInk(dataUrl) {
     }
   }
   if (x1 < x0 || y1 < y0) return null // 빈 캔버스
-  const r = Math.max(1, (y1 - y0) * 0.018) // 잉크 크기에 비례한 두께 보강 (과하지 않게)
+  const r = Math.max(0.6, (y1 - y0) * 0.007) // 아주 살짝만 보강 — 글자 형태 유지가 최우선
   const pad = Math.ceil(r) + 2
   const out = document.createElement('canvas')
   out.width = x1 - x0 + 1 + pad * 2
   out.height = y1 - y0 + 1 + pad * 2
   const octx = out.getContext('2d')
-  const offsets = [
-    [0, 0], [r, 0], [-r, 0], [0, r], [0, -r],
-    [r * 0.7, r * 0.7], [-r * 0.7, r * 0.7], [r * 0.7, -r * 0.7], [-r * 0.7, -r * 0.7],
-  ]
+  const offsets = [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]]
   for (const [dx, dy] of offsets) {
     octx.drawImage(c, pad - x0 + dx, pad - y0 + dy)
   }
