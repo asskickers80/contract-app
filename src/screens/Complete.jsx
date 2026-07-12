@@ -74,16 +74,16 @@ export default function Complete({ result, onNewContract }) {
         {/* 고객에게 보내기 */}
         <div className="mt-4 rounded-2xl bg-white p-4 shadow-sm">
           <p className="text-sm font-bold text-gray-900">고객에게 계약서 보내기</p>
-          <p className="mt-1 text-xs text-gray-400">공유 버튼을 누르면 카카오톡·문자·메일·AirDrop 중에서 고를 수 있어요.</p>
+          <p className="mt-1 text-xs text-gray-400">전달 버튼을 누르면 카카오톡·문자·메일·AirDrop 중에서 고를 수 있어요.</p>
           <button onClick={handleShare}
             className="mt-3 w-full rounded-2xl bg-blue-600 py-4 text-base font-bold text-white active:bg-blue-700">
-            고객에게 보내기 (공유)
+            고객에게 보내기 (전달)
           </button>
-          {shareStatus === 'shared' && <p className="mt-2 text-center text-sm font-semibold text-green-600">✓ 공유를 완료했어요</p>}
+          {shareStatus === 'shared' && <p className="mt-2 text-center text-sm font-semibold text-green-600">✓ 전달을 완료했어요</p>}
           {shareStatus === 'downloaded' && (
             <p className="mt-2 text-center text-xs text-amber-600">
-              공유 시트 대신 PDF를 다운로드했어요. 파일 앱에서 직접 공유해 주세요.
-              (인트라넷 http 주소에서는 iPad 보안 정책상 공유 시트가 안 열려요 — 나중에 HTTPS로 배포하면 열립니다)
+              전달 창 대신 PDF를 다운로드했어요. 파일 앱에서 직접 전달해 주세요.
+              (인트라넷 http 주소에서는 iPad 보안 정책상 전달 창이 안 열려요 — 나중에 HTTPS로 배포하면 열립니다)
             </p>
           )}
           <button onClick={() => downloadBlob(pdfBlob, fileName)}
