@@ -30,9 +30,9 @@ export const POS = {
   periodPatch:  { x: 0.855,  y: 0.2839, size: 7.5, align: 'center', patch: { x0: 0.797, x1: 0.908 } }, // '( 3 )개월간' 인쇄됨 — 3개월 아닐 때만 덮어씀
 
   // 하단 "20  년  월  일" 빈칸 — 값은 단위 글자(년/월/일) 앞 빈칸에 쓴다
-  signYY: { x: 0.702, y: 0.9065, size: 9.5 },          // "20" 뒤 두 자리
-  signMM: { x: 0.785, y: 0.9065, size: 9.5, align: 'center' },
-  signDD: { x: 0.845, y: 0.9065, size: 9.5, align: 'center' },
+  signYY: { x: 0.702, y: 0.907, size: 9.5 },          // "20" 뒤 두 자리
+  signMM: { x: 0.785, y: 0.907, size: 9.5, align: 'center' },
+  signDD: { x: 0.845, y: 0.907, size: 9.5, align: 'center' },
 
   // 광고주 성명
   customerName: { x: 0.295, y: 0.9505, size: 12.5, bold: true, tracking: 0.3 },
