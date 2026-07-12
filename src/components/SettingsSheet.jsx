@@ -59,7 +59,7 @@ export default function SettingsSheet({ onClose, onAgentChange }) {
         <p className={`mt-5 rounded-xl px-3 py-2.5 text-xs leading-relaxed ${isSupabaseConfigured ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-800'}`}>
           {isSupabaseConfigured
             ? 'Supabase 연결됨 — 계약서가 자동 저장됩니다.'
-            : 'Supabase 미설정 — PDF 생성·공유는 되지만 저장·목록은 동작하지 않아요. (.env에 VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY 입력)'}
+            : 'Supabase 미설정 — PDF 생성·전달은 되지만 저장·목록은 동작하지 않아요. (.env에 VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY 입력)'}
         </p>
         <p className="mt-3 text-center text-xs text-gray-300">내부 전용 · ㈜점포라인</p>
       </div>

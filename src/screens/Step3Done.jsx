@@ -144,7 +144,7 @@ export default function Step3Done({ onNew }) {
             {shareResult === 'shared' ? '✓ 전달 완료' : shareResult === 'downloaded' ? '✓ 다운로드됨' : '고객에게 보내기'}
           </button>
           {shareResult === 'downloaded' && (
-            <p className="text-xs text-center text-gray-400">파일 앱에서 직접 공유하세요.</p>
+            <p className="text-xs text-center text-gray-400">파일 앱에서 직접 전달하세요.</p>
           )}
         </div>
 

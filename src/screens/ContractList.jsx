@@ -84,7 +84,7 @@ export default function ContractList() {
                   disabled={busyId === row.id}
                   className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
                 >
-                  {busyId === row.id ? '…' : '재공유'}
+                  {busyId === row.id ? '…' : '재전달'}
                 </button>
                 <button
                   onClick={() => withPdf(row, (blob, name) => downloadBlob(blob, name))}

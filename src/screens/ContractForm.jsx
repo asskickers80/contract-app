@@ -73,7 +73,7 @@ export default function ContractForm({ draft, onChange, onGenerate }) {
       <div className="mx-auto mt-4 max-w-2xl space-y-4 px-4">
         {!isSupabaseConfigured && (
           <p className="rounded-xl bg-amber-50 px-4 py-2.5 text-xs leading-relaxed text-amber-800">
-            Supabase 미설정 — PDF 생성·공유는 되지만 저장·목록은 동작하지 않아요. (설정 ⚙ 참고)
+            Supabase 미설정 — PDF 생성·전달은 되지만 저장·목록은 동작하지 않아요. (설정 ⚙ 참고)
           </p>
         )}
 
