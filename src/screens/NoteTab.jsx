@@ -5,11 +5,13 @@ import { formatComma, parseAmount } from '../lib/format.js'
 
 // 요율 고정 규칙
 const BROKER_RATE = 0.9 // 중개보수: 환산보증금의 0.9%
-// 권리금 수수료: 1억 미만 5%, 1억 이상 2억 미만 4%, 2억 이상 3%
-function premiumRateOf(premium) {
-  if (premium >= 200000000) return 3
-  if (premium >= 100000000) return 4
-  return 5
+// 권리금 수수료: 4,000만 이하 일괄 200만 원, 1억 미만 5%, 1억 이상 2억 미만 4%, 2억 이상 3%
+function premiumFeeOf(premium) {
+  if (!premium || premium <= 0) return { fee: 0, label: null }
+  if (premium <= 40000000) return { fee: 2000000, label: '일괄 200만 원 적용' }
+  if (premium >= 200000000) return { fee: Math.round(premium * 0.03), label: '3% 적용' }
+  if (premium >= 100000000) return { fee: Math.round(premium * 0.04), label: '4% 적용' }
+  return { fee: Math.round(premium * 0.05), label: '5% 적용' }
 }
 
 // 보드의 매물 정보(AI 추출)와 저장된 계산값으로 계산기 초기값 구성
@@ -149,8 +151,7 @@ function FeeCalc({ fee, hasInfo, onChange, onPullInfo }) {
   // 환산보증금 = 보증금 + 월세 × 100
   const converted = (fee.deposit || 0) + (fee.monthlyRent || 0) * 100
   const brokerFee = Math.round(converted * BROKER_RATE / 100)
-  const premiumRate = premiumRateOf(fee.premium || 0)
-  const premiumFee = Math.round((fee.premium || 0) * premiumRate / 100)
+  const { fee: premiumFee, label: premiumLabel } = premiumFeeOf(fee.premium || 0)
   const total = brokerFee + premiumFee
   const totalVat = Math.round(total * 1.1)
 
@@ -202,7 +203,13 @@ function FeeCalc({ fee, hasInfo, onChange, onPullInfo }) {
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-500">권리금 수수료</span>
             <span className="font-semibold text-gray-700">
-              {formatComma(premiumFee) || 0}원 <span className="text-[11px] font-normal text-blue-600">{premiumRate}% 적용</span> <span className="text-[11px] font-normal text-gray-400">(부가세 별도)</span>
+              {formatComma(premiumFee) || 0}원{' '}
+              {premiumLabel && (
+                <span className={`text-[11px] font-normal ${premiumLabel.startsWith('일괄') ? 'rounded bg-amber-100 px-1.5 py-0.5 font-semibold text-amber-700' : 'text-blue-600'}`}>
+                  {premiumLabel}
+                </span>
+              )}{' '}
+              <span className="text-[11px] font-normal text-gray-400">(부가세 별도)</span>
             </span>
           </div>
           <div className="flex items-baseline justify-between border-t border-gray-100 pt-1.5">
@@ -213,7 +220,7 @@ function FeeCalc({ fee, hasInfo, onChange, onPullInfo }) {
             </span>
           </div>
         </div>
-        <p className="mt-1.5 text-right text-[11px] text-gray-400">권리금 수수료율: 1억 미만 5% · 1억~2억 미만 4% · 2억 이상 3%</p>
+        <p className="mt-1.5 text-right text-[11px] text-gray-400">권리금 수수료: 4,000만 이하 일괄 200만 원 · 1억 미만 5% · 1억~2억 미만 4% · 2억 이상 3%</p>
       </div>
     </div>
   )
