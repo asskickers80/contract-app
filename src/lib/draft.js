@@ -10,7 +10,7 @@ export function makeEmptyDraft() {
     businessType: '',
     bizNo: '',
     address: '',
-    agentName: localStorage.getItem(AGENT_KEY) || '',
+    agentName: '김태우', // 담당 에이전트 고정 (2026-07-12 대표님 지시)
     productName: '광고',
     productKey: null,
     fee: 0,
