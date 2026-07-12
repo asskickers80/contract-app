@@ -11,9 +11,9 @@ export const IMG_PT_WIDTH = 595.3
 // x,y: 글자 시작점(baseline 기준). align: 'center'면 x가 중심점.
 export const POS = {
   // 상단 표 셀 실측: 상호값 0.1657~ | 업종값 0.4704~ | 사업자번호값 0.762~
-  storeName:    { x: 0.175, y: 0.1305, size: 9 },
-  businessType: { x: 0.478, y: 0.1305, size: 9 },
-  bizNo:        { x: 0.770, y: 0.1305, size: 8.5 },
+  storeName:    { x: 0.175, y: 0.129, size: 9 },
+  businessType: { x: 0.478, y: 0.129, size: 9 },
+  bizNo:        { x: 0.770, y: 0.129, size: 8.5 },
   address:      { x: 0.175, y: 0.1502, size: 9 },
   agentName:    { x: 0.770, y: 0.1502, size: 9 },
 
