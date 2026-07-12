@@ -101,6 +101,8 @@ export default function PinLock({ onUnlock }) {
           ),
         )}
       </div>
+
+      <p className="mt-8 text-[11px] text-gray-300">버전 {__BUILD_TIME__} 빌드</p>
     </div>
   )
 }
