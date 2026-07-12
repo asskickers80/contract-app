@@ -22,7 +22,7 @@ async function fetchBytes(url, label) {
 const won = n => `${Number(n || 0).toLocaleString('ko-KR')}원`
 const dotDate = iso => {
   const [y, m, d] = (iso || '').split('-').map(Number)
-  return y ? `${y}. ${m}. ${d}.` : ''
+  return y ? `${y}.  ${m}.  ${d}.` : ''
 }
 
 // 모든 글자 오버레이를 투명 캔버스에 그려 PNG(dataURL)로 반환
