@@ -42,7 +42,11 @@ function buildTextOverlay(contract, signedDate, imgW, imgH) {
     ctx.textBaseline = 'alphabetic'
     let x = pos.x * W
     const y = pos.y * H
-    const tw = ctx.measureText(t).width
+    const track = (pos.tracking || 0) * px // 자간(글자 사이 여백, em 단위)
+    const chars = [...t]
+    const tw = track
+      ? chars.reduce((s, ch) => s + ctx.measureText(ch).width, 0) + track * (chars.length - 1)
+      : ctx.measureText(t).width
     if (pos.align === 'center') x -= tw / 2
     if (pos.patch) { // 인쇄된 기존 값을 흰 상자로 덮고 쓴다
       ctx.fillStyle = 'rgba(255,255,255,1)'
@@ -54,7 +58,15 @@ function buildTextOverlay(contract, signedDate, imgW, imgH) {
       }
     }
     ctx.fillStyle = INK
-    ctx.fillText(t, x, y)
+    if (track) {
+      let cx = x
+      for (const ch of chars) {
+        ctx.fillText(ch, cx, y)
+        cx += ctx.measureText(ch).width + track
+      }
+    } else {
+      ctx.fillText(t, x, y)
+    }
   }
 
   drawField(POS.storeName, contract.storeName)

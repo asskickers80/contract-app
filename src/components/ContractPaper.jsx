@@ -23,6 +23,7 @@ function Overlay({ pos, text }) {
     lineHeight: 1,
     transform: `translateY(-100%)${pos.align === 'center' ? ' translateX(-50%)' : ''}`,
     fontWeight: pos.bold ? 700 : 500,
+    letterSpacing: pos.tracking ? `${pos.tracking}em` : undefined,
     color: '#141a59',
     whiteSpace: 'nowrap',
     background: pos.patch && !cellPatch ? 'rgba(255,255,255,0.92)' : 'transparent',
