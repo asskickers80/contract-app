@@ -57,7 +57,7 @@ export default function Complete({ result, onNewContract }) {
         {/* 저장 상태 */}
         <div className={`mt-6 rounded-2xl px-4 py-3.5 text-sm ${savedRow ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-800'}`}>
           {savedRow ? (
-            '✓ 계약서가 내부 저장소(Supabase)에 저장되었습니다.'
+            '✓ 계약서가 저장되었습니다.'
           ) : (
             <div className="flex items-center justify-between gap-3">
               <span>저장 안 됨: {saveError}</span>
