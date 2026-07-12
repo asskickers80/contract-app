@@ -96,6 +96,47 @@ function buildTextOverlay(contract, signedDate, imgW, imgH) {
   return canvas.toDataURL('image/png')
 }
 
+// 손글씨 PNG 전처리 — 서명판의 투명 여백을 잘라 잉크 부분만 남기고(크게 들어가도록),
+// 획을 여러 방향으로 겹쳐 찍어 도톰하게 만든다 (축소 후에도 얇아 보이지 않게)
+async function prepareInk(dataUrl) {
+  if (!dataUrl) return null
+  const img = new Image()
+  img.src = dataUrl
+  await img.decode()
+  const c = document.createElement('canvas')
+  c.width = img.width
+  c.height = img.height
+  const ctx = c.getContext('2d')
+  ctx.drawImage(img, 0, 0)
+  const { data } = ctx.getImageData(0, 0, c.width, c.height)
+  let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1
+  for (let y = 0; y < c.height; y++) {
+    for (let x = 0; x < c.width; x++) {
+      if (data[(y * c.width + x) * 4 + 3] > 20) {
+        if (x < x0) x0 = x
+        if (x > x1) x1 = x
+        if (y < y0) y0 = y
+        if (y > y1) y1 = y
+      }
+    }
+  }
+  if (x1 < x0 || y1 < y0) return null // 빈 캔버스
+  const r = Math.max(1.5, (y1 - y0) * 0.03) // 잉크 크기에 비례한 두께 보강
+  const pad = Math.ceil(r) + 2
+  const out = document.createElement('canvas')
+  out.width = x1 - x0 + 1 + pad * 2
+  out.height = y1 - y0 + 1 + pad * 2
+  const octx = out.getContext('2d')
+  const offsets = [
+    [0, 0], [r, 0], [-r, 0], [0, r], [0, -r],
+    [r * 0.7, r * 0.7], [-r * 0.7, r * 0.7], [r * 0.7, -r * 0.7], [-r * 0.7, -r * 0.7],
+  ]
+  for (const [dx, dy] of offsets) {
+    octx.drawImage(c, pad - x0 + dx, pad - y0 + dy)
+  }
+  return out.toDataURL('image/png')
+}
+
 export async function generateContractPdf(contract, images, signedDate) {
   if (!formBytesCache) formBytesCache = await fetchBytes(FORM_IMAGE, '계약서 원본 이미지')
 
@@ -134,8 +175,8 @@ export async function generateContractPdf(contract, images, signedDate) {
     })
   }
 
-  await drawInRect(RECTS.handwriting, images.handwrittenPng)
-  await drawInRect(RECTS.signature, images.signaturePng)
+  await drawInRect(RECTS.handwriting, await prepareInk(images.handwrittenPng))
+  await drawInRect(RECTS.signature, await prepareInk(images.signaturePng))
   // 회사 직인은 원본 사진에 이미 찍혀 있으므로 별도 오버레이 없음
 
   const bytes = await doc.save()
