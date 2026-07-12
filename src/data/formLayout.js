@@ -9,6 +9,7 @@ export const FORM_RATIO = 1527 / 1080 // 세로/가로
 export const IMG_PT_WIDTH = 595.3
 
 // x,y: 글자 시작점(baseline 기준). align: 'center'면 x가 중심점.
+// ⚠️ 2026-07-12 대표님 실물 검수로 확정된 좌표 — 대표님 지시 없이 수정 금지.
 export const POS = {
   // 상단 표 셀 실측: 상호값 0.1657~ | 업종값 0.4704~ | 사업자번호값 0.762~
   storeName:    { x: 0.175, y: 0.1275, size: 9 },
@@ -29,9 +30,9 @@ export const POS = {
   periodPatch:  { x: 0.855,  y: 0.2839, size: 7.5, align: 'center', patch: { x0: 0.797, x1: 0.908 } }, // '( 3 )개월간' 인쇄됨 — 3개월 아닐 때만 덮어씀
 
   // 하단 "20  년  월  일" 빈칸 — 값은 단위 글자(년/월/일) 앞 빈칸에 쓴다
-  signYY: { x: 0.702, y: 0.9035, size: 9.5 },          // "20" 뒤 두 자리
-  signMM: { x: 0.785, y: 0.9035, size: 9.5, align: 'center' },
-  signDD: { x: 0.848, y: 0.9035, size: 9.5, align: 'center' },
+  signYY: { x: 0.702, y: 0.9055, size: 9.5 },          // "20" 뒤 두 자리
+  signMM: { x: 0.785, y: 0.9055, size: 9.5, align: 'center' },
+  signDD: { x: 0.845, y: 0.9055, size: 9.5, align: 'center' },
 
   // 광고주 성명
   customerName: { x: 0.235, y: 0.9525, size: 10.5, bold: true },
@@ -40,6 +41,6 @@ export const POS = {
 // 이미지 영역(비율 사각형): x,y = 좌상단, w,h = 크기
 // 직인 오버레이는 없음 — 원본 스캔에 이미 회사 직인이 찍혀 있다.
 export const RECTS = {
-  handwriting: { x: 0.760, y: 0.834, w: 0.155, h: 0.050 }, // 자필 확인 란 ('들었음' 워터마크 위)
-  signature:   { x: 0.305, y: 0.920, w: 0.155, h: 0.033 }, // 성명 옆 빈칸
+  handwriting: { x: 0.760, y: 0.840, w: 0.155, h: 0.050 }, // 자필 확인 란 ('들었음' 워터마크 위)
+  signature:   { x: 0.305, y: 0.928, w: 0.155, h: 0.033 }, // 성명 옆 빈칸
 }
