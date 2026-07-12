@@ -6,6 +6,19 @@ import SignScreen from './SignScreen.jsx'
 import { makeEmptyDraft } from '../lib/draft.js'
 import { loadCardBoard } from '../lib/boardStore.js'
 import { formatBizNo, digitsOnly } from '../lib/format.js'
+import { CATEGORIES } from '../constants/categories.js'
+
+// AI가 "서비스업 기타서비스업"처럼 대분류까지 붙여 읽어도 계약서에는 세부 업종명만 쓴다
+const LEAF_TYPES = CATEGORIES.flatMap(c => c.items)
+export function normalizeBizType(v) {
+  const s = (v || '').trim()
+  if (!s || LEAF_TYPES.includes(s)) return s
+  const tokens = s.split(/\s+/)
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    if (LEAF_TYPES.includes(tokens[i])) return tokens[i]
+  }
+  return tokens.length > 1 ? tokens[tokens.length - 1] : s
+}
 
 // [계약] 탭 — 기존 계약서 앱의 2단계 흐름을 탭 하나 안에 단계 전환 방식으로 구현
 //   1단계 [입력]: 정보 입력 → 필수 필드 완료 시 [계약서 생성] 활성화
@@ -28,7 +41,7 @@ export default function ContractTab({ onComplete, cardKey, active }) {
         setDraft(d => ({
           ...d,
           storeName: d.storeName?.trim() ? d.storeName : (info.storeName || ''),
-          businessType: d.businessType?.trim() ? d.businessType : (info.businessType || ''),
+          businessType: d.businessType?.trim() ? d.businessType : normalizeBizType(info.businessType),
           bizNo: digitsOnly(d.bizNo) ? d.bizNo : (info.bizNo ? formatBizNo(info.bizNo) : ''),
           address: d.address?.trim() ? d.address : (info.address || ''),
         }))

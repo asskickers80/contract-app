@@ -9,7 +9,7 @@ const A4_IMG_W = IMG_PT_WIDTH // PDF에서 이미지가 그려지는 폭(pt) —
 const won = n => `${Number(n || 0).toLocaleString('ko-KR')}원`
 const dotDate = iso => {
   const [y, m, d] = (iso || '').split('-').map(Number)
-  return y ? `${y}. ${m}. ${d}.` : ''
+  return y ? `${y}.  ${m}.  ${d}.` : ''
 }
 
 function Overlay({ pos, text }) {

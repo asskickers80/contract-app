@@ -10,20 +10,21 @@ export const IMG_PT_WIDTH = 595.3
 
 // x,y: 글자 시작점(baseline 기준). align: 'center'면 x가 중심점.
 export const POS = {
-  storeName:    { x: 0.175, y: 0.1297, size: 9 },
-  businessType: { x: 0.492, y: 0.1297, size: 9 },
-  bizNo:        { x: 0.785, y: 0.1297, size: 8.5 },
+  storeName:    { x: 0.175, y: 0.1342, size: 9 },
+  businessType: { x: 0.492, y: 0.1342, size: 9 },
+  bizNo:        { x: 0.785, y: 0.1342, size: 8.5 },
   address:      { x: 0.175, y: 0.1502, size: 9 },
   agentName:    { x: 0.785, y: 0.1502, size: 9 },
 
-  // 제1조 광고조건 표 (7열) — 값 행
+  // 제1조 광고조건 표 (7열) — 값 행. 셀 경계 실측:
+  // 0.0852 | 0.2278 | 0.337 | 0.4389 | 0.5509 | 0.6713 | 0.7944 | 0.913
   // patch가 {x0,x1}이면 그 셀 구간을 흰색으로 덮고 쓴다 (인쇄된 기본값/점 제거)
-  productPatch: { x: 0.1635, y: 0.2839, size: 7.5, align: 'center', patch: { x0: 0.093, x1: 0.2265 } }, // '광고' 인쇄됨 — 다를 때만 덮어씀
-  fee:          { x: 0.2835, y: 0.2839, size: 7.5, align: 'center' },
-  vat:          { x: 0.3865, y: 0.2839, size: 7.5, align: 'center' },
-  total:        { x: 0.490,  y: 0.2839, size: 7.5, align: 'center', bold: true },
-  startDate:    { x: 0.6035, y: 0.2839, size: 7.5, align: 'center', patch: { x0: 0.557, x1: 0.664 } }, // 인쇄된 ". ." 점 덮기
-  endDate:      { x: 0.730,  y: 0.2839, size: 7.5, align: 'center', patch: { x0: 0.682, x1: 0.7865 } },
+  productPatch: { x: 0.1565, y: 0.2839, size: 9.5, align: 'center', bold: true, patch: { x0: 0.093, x1: 0.2265 } }, // '광고' 인쇄됨 — 다를 때만 덮어씀
+  fee:          { x: 0.236,  y: 0.2839, size: 7.5 }, // 셀 왼쪽 정렬
+  vat:          { x: 0.345,  y: 0.2839, size: 7.5 },
+  total:        { x: 0.447,  y: 0.2839, size: 7.5, bold: true },
+  startDate:    { x: 0.6111, y: 0.2839, size: 7.5, align: 'center', patch: { x0: 0.557, x1: 0.665 } }, // 인쇄된 ". ." 점 덮기
+  endDate:      { x: 0.7329, y: 0.2839, size: 7.5, align: 'center', patch: { x0: 0.677, x1: 0.789 } },
   periodPatch:  { x: 0.855,  y: 0.2839, size: 7.5, align: 'center', patch: { x0: 0.797, x1: 0.908 } }, // '( 3 )개월간' 인쇄됨 — 3개월 아닐 때만 덮어씀
 
   // 하단 "20  년  월  일" 빈칸 — 값은 단위 글자(년/월/일) 앞 빈칸에 쓴다
