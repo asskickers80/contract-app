@@ -82,15 +82,15 @@ export default function CaptureBoard({ board, onBoardChange }) {
       <div className="flex shrink-0 items-center gap-2 pb-2">
         <button
           onClick={() => setPlacing(p => !p)}
-          className={`h-10 rounded-xl px-4 text-sm font-bold shadow-sm ${
+          className={`h-10 rounded-full px-4 text-[12.5px] font-bold transition-colors duration-150 ${
             placing
-              ? 'bg-amber-600 text-white active:bg-amber-700'
-              : 'bg-amber-400 text-amber-950 active:bg-amber-500'
+              ? 'bg-on-warn text-warn active:opacity-90'
+              : 'bg-warn text-on-warn active:opacity-80'
           }`}
         >
           {placing ? '위치 선택 중… (취소)' : '+ 메모 붙이기'}
         </button>
-        <span className="min-w-0 flex-1 truncate text-right text-[11px] text-gray-300">
+        <span className="min-w-0 flex-1 truncate text-right text-[11.5px] text-fg-hint">
           {placing
             ? '이미지에서 원하는 위치를 눌러 주세요'
             : `${board.capturedAt ? `캡처: ${new Date(board.capturedAt).toLocaleString('ko-KR')} · ` : ''}메모를 누르면 펼쳐져요 · 드래그로 이동, 모서리로 크기 조절`}
@@ -99,7 +99,7 @@ export default function CaptureBoard({ board, onBoardChange }) {
 
       <div
         ref={containerRef}
-        className={`relative min-h-0 flex-1 touch-none select-none overflow-hidden rounded-xl border border-gray-200 bg-gray-50 shadow-sm ${placing ? 'cursor-crosshair' : ''}`}
+        className={`relative min-h-0 flex-1 touch-none select-none overflow-hidden rounded-2xl bg-card shadow-card ${placing ? 'cursor-crosshair' : ''}`}
         onClick={placeNote}
         onPointerMove={onDrag}
         onPointerUp={() => { dragRef.current = null; resizeRef.current = null }}

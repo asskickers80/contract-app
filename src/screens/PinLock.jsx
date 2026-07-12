@@ -67,16 +67,16 @@ export default function PinLock({ onUnlock }) {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-slate-50 px-6">
-      <div className="text-2xl font-bold text-gray-900">점포라인 계약서</div>
-      <p className="mt-2 text-sm text-gray-500">{title}</p>
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-surface px-6">
+      <div className="text-2xl font-extrabold text-fg">점포라인 계약서</div>
+      <p className="mt-2 text-sm text-fg-2">{title}</p>
 
       <div className={`mt-6 flex gap-4 ${shaking ? 'animate-bounce' : ''}`}>
         {[0, 1, 2, 3].map(i => (
-          <div key={i} className={`h-4 w-4 rounded-full ${i < pin.length ? 'bg-blue-600' : 'bg-gray-300'}`} />
+          <div key={i} className={`h-4 w-4 rounded-full ${i < pin.length ? 'bg-primary' : 'bg-line'}`} />
         ))}
       </div>
-      {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+      {error && <p className="mt-3 text-sm font-semibold text-danger">{error}</p>}
 
       <div className="mt-8 grid w-64 grid-cols-3 gap-3">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, null, 0, 'del'].map((key, idx) =>
@@ -86,7 +86,7 @@ export default function PinLock({ onUnlock }) {
             <button
               key={idx}
               onClick={() => setPin(p => p.slice(0, -1))}
-              className="h-16 rounded-2xl bg-white text-lg font-semibold text-gray-500 shadow-sm active:bg-gray-100"
+              className="h-16 rounded-full bg-card text-lg font-semibold text-fg-2 shadow-card active:bg-chip"
             >
               ⌫
             </button>
@@ -94,7 +94,7 @@ export default function PinLock({ onUnlock }) {
             <button
               key={idx}
               onClick={() => handleDigit(String(key))}
-              className="h-16 rounded-2xl bg-white text-xl font-bold text-gray-900 shadow-sm active:bg-blue-50"
+              className="h-16 rounded-full bg-card text-xl font-bold text-fg shadow-card active:bg-primary-container"
             >
               {key}
             </button>
@@ -102,7 +102,7 @@ export default function PinLock({ onUnlock }) {
         )}
       </div>
 
-      <p className="mt-8 text-[11px] text-gray-300">버전 {__BUILD_TIME__} 빌드</p>
+      <p className="mt-8 text-[11px] text-fg-disabled">버전 {__BUILD_TIME__} 빌드</p>
     </div>
   )
 }

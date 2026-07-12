@@ -18,19 +18,19 @@ export default function CategoryPicker({ value, onSelect }) {
     <div>
       {value && (
         <div className="mb-3 flex items-center gap-2">
-          <span className="rounded-full bg-blue-600 px-4 py-2 text-sm font-bold text-white">{value}</span>
-          <button onClick={() => onSelect('')} className="text-sm text-gray-400 underline">다시 선택</button>
+          <span className="rounded-full bg-primary px-4 py-2 text-[13px] font-bold text-on-primary">{value}</span>
+          <button onClick={() => onSelect('')} className="text-[12.5px] font-semibold text-primary underline underline-offset-2">다시 선택</button>
         </div>
       )}
       {!value && (
         <>
           {recent.length > 0 && (
             <div className="mb-3">
-              <p className="text-xs text-gray-400">최근 선택</p>
+              <p className="text-xs text-fg-hint">최근 선택</p>
               <div className="mt-1 flex flex-wrap gap-2">
                 {recent.map(name => (
                   <button key={name} onClick={() => pick(name)}
-                    className="rounded-full border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 active:bg-blue-100">
+                    className="rounded-full bg-primary-container px-4 py-2 text-sm font-semibold text-on-primary-container active:opacity-80">
                     {name}
                   </button>
                 ))}
@@ -40,12 +40,12 @@ export default function CategoryPicker({ value, onSelect }) {
           <div className="flex gap-1 overflow-x-auto pb-1">
             {CATEGORIES.map(c => (
               <button key={c.group} onClick={() => { setGroup(c.group); setCustomMode(false) }}
-                className={`shrink-0 rounded-lg px-3 py-2 text-sm font-semibold ${group === c.group && !customMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                className={`shrink-0 rounded-full px-3.5 py-2 text-sm font-semibold transition-colors duration-150 ${group === c.group && !customMode ? 'bg-primary text-on-primary' : 'bg-chip text-fg-2'}`}>
                 {c.group}
               </button>
             ))}
             <button onClick={() => setCustomMode(true)}
-              className={`shrink-0 rounded-lg px-3 py-2 text-sm font-semibold ${customMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>
+              className={`shrink-0 rounded-full px-3.5 py-2 text-sm font-semibold transition-colors duration-150 ${customMode ? 'bg-primary text-on-primary' : 'bg-chip text-fg-2'}`}>
               직접입력
             </button>
           </div>
@@ -55,7 +55,7 @@ export default function CategoryPicker({ value, onSelect }) {
             <div className="mt-2 flex flex-wrap gap-2">
               {items.map(name => (
                 <button key={name} onClick={() => pick(name)}
-                  className="rounded-full border border-gray-200 px-4 py-2.5 text-sm text-gray-800 active:bg-blue-50">
+                  className="rounded-full border border-line bg-card px-4 py-2.5 text-sm text-fg active:bg-chip">
                   {name}
                 </button>
               ))}
@@ -74,10 +74,10 @@ function CustomCategoryInput({ onSubmit }) {
       <input
         type="text" value={text} onChange={e => setText(e.target.value)}
         placeholder="업종을 직접 입력"
-        className="flex-1 rounded-xl border border-gray-300 px-3 py-3 text-base focus:border-blue-500 focus:outline-none"
+        className="flex-1 rounded-xl bg-field px-3.5 py-3 text-base font-semibold text-fg placeholder:font-normal placeholder:text-fg-hint focus:outline-none focus:ring-2 focus:ring-primary"
       />
       <button onClick={() => text.trim() && onSubmit(text.trim())}
-        className="rounded-xl bg-blue-600 px-5 text-sm font-bold text-white disabled:opacity-40" disabled={!text.trim()}>
+        className="rounded-full bg-primary px-5 text-sm font-bold text-on-primary disabled:bg-off-bg disabled:text-off-fg" disabled={!text.trim()}>
         확인
       </button>
     </div>

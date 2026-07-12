@@ -54,42 +54,42 @@ export default function ContractList() {
           <input
             type="search" value={keyword} onChange={e => setKeyword(e.target.value)}
             placeholder="상호로 검색"
-            className="flex-1 rounded-xl border border-gray-300 bg-white px-3 py-3 text-base focus:border-blue-500 focus:outline-none"
+            className="flex-1 rounded-xl bg-field px-3.5 py-3 text-base font-semibold text-fg placeholder:font-normal placeholder:text-fg-hint focus:outline-none focus:ring-2 focus:ring-primary"
           />
-          <button type="submit" className="rounded-xl bg-gray-900 px-5 text-sm font-bold text-white">검색</button>
+          <button type="submit" className="rounded-full bg-primary px-5 text-sm font-bold text-on-primary active:opacity-90">검색</button>
         </form>
 
-        {loading && <p className="py-10 text-center text-sm text-gray-400">불러오는 중…</p>}
-        {error && <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</p>}
+        {loading && <p className="py-10 text-center text-sm text-fg-hint">불러오는 중…</p>}
+        {error && <p className="rounded-xl bg-warn px-4 py-3 text-sm text-on-warn">{error}</p>}
         {!loading && !error && rows.length === 0 && (
-          <p className="py-10 text-center text-sm text-gray-400">저장된 계약서가 없어요.</p>
+          <p className="py-10 text-center text-sm text-fg-hint">저장된 계약서가 없어요.</p>
         )}
 
         {rows.map(row => (
-          <div key={row.id} className="rounded-2xl bg-white p-4 shadow-sm">
+          <div key={row.id} className="rounded-2xl bg-card p-4 shadow-card">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-base font-bold text-gray-900">{row.store_name}</p>
-                <p className="mt-0.5 text-xs text-gray-400">
+                <p className="text-base font-extrabold text-fg">{row.store_name}</p>
+                <p className="mt-0.5 text-xs text-fg-hint">
                   {row.business_type} · 총 {Number(row.total || 0).toLocaleString('ko-KR')}원
                 </p>
-                <p className="mt-0.5 text-xs text-gray-400">
+                <p className="mt-0.5 text-xs text-fg-hint">
                   개시 {formatKoreanDate(row.start_date)} · 서명 {row.signed_at ? new Date(row.signed_at).toLocaleString('ko-KR') : '—'}
                 </p>
-                {row.payment_opened_at && <p className="mt-0.5 text-xs text-blue-500">결제 페이지 연 시각: {new Date(row.payment_opened_at).toLocaleString('ko-KR')}</p>}
+                {row.payment_opened_at && <p className="mt-0.5 text-xs text-primary">결제 페이지 연 시각: {new Date(row.payment_opened_at).toLocaleString('ko-KR')}</p>}
               </div>
               <div className="flex shrink-0 flex-col gap-2">
                 <button
                   onClick={() => withPdf(row, (blob, name) => sharePdf(blob, name))}
                   disabled={busyId === row.id}
-                  className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                  className="rounded-full bg-primary px-4 py-2.5 text-[13px] font-bold text-on-primary active:opacity-90 disabled:opacity-50"
                 >
                   {busyId === row.id ? '…' : '재전달'}
                 </button>
                 <button
                   onClick={() => withPdf(row, (blob, name) => downloadBlob(blob, name))}
                   disabled={busyId === row.id}
-                  className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 disabled:opacity-50"
+                  className="rounded-full border border-line bg-card px-4 py-2.5 text-[13px] font-semibold text-primary active:bg-chip disabled:opacity-50"
                 >
                   다운로드
                 </button>
