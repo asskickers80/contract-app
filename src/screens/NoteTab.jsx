@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import InkPad from '../components/InkPad.jsx'
 import { loadCardBoard, saveCardBoard } from '../lib/boardStore.js'
 import { formatComma, parseAmount } from '../lib/format.js'
 
@@ -26,24 +27,44 @@ export default function NoteTab({ cardKey }) {
   const [note, setNote] = useState('')
   const [fee, setFee] = useState(null)
   const [info, setInfo] = useState(null)
+  const [ink, setInk] = useState(null) // 손글씨 획 배열 (로드 시 1회 설정)
+  const [mode, setMode] = useState(() => localStorage.getItem('contract.noteMode') || 'ink')
   const [loaded, setLoaded] = useState(false)
   const saveTimer = useRef(null)
   const feeTimer = useRef(null)
+  const inkTimer = useRef(null)
 
   useEffect(() => {
     setLoaded(false)
     setFee(null)
     setInfo(null)
+    setInk(null)
     if (!cardKey) return
     loadCardBoard(cardKey)
       .then(board => {
         setNote(board?.note || '')
         setInfo(board?.info || null)
         setFee(initFee(board))
+        setInk(board?.ink?.strokes || [])
         setLoaded(true)
       })
       .catch(() => setLoaded(true))
   }, [cardKey])
+
+  function switchMode(next) {
+    setMode(next)
+    localStorage.setItem('contract.noteMode', next)
+  }
+
+  // 손글씨 저장 (디바운스)
+  function handleInkCommit(strokes) {
+    if (!cardKey) return
+    clearTimeout(inkTimer.current)
+    inkTimer.current = setTimeout(async () => {
+      const board = await loadCardBoard(cardKey).catch(() => null)
+      await saveCardBoard(cardKey, { ...(board || {}), ink: { strokes } })
+    }, 500)
+  }
 
   function handleChange(e) {
     const val = e.target.value
@@ -92,16 +113,33 @@ export default function NoteTab({ cardKey }) {
         <FeeCalc fee={fee} hasInfo={!!info} onChange={updateFee} onPullInfo={pullFromInfo} />
       )}
 
-      <div className="border-b border-gray-100 px-4 py-2">
+      <div className="flex items-center justify-between border-b border-gray-100 px-4 py-1.5">
         <p className="text-sm font-bold text-gray-700">노트</p>
+        <div className="flex overflow-hidden rounded-lg bg-gray-100 p-0.5">
+          <button onClick={() => switchMode('ink')}
+            className={`rounded-md px-4 py-2 text-xs font-bold ${mode === 'ink' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'}`}>
+            ✏ 손글씨
+          </button>
+          <button onClick={() => switchMode('text')}
+            className={`rounded-md px-4 py-2 text-xs font-bold ${mode === 'text' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'}`}>
+            ⌨ 텍스트
+          </button>
+        </div>
       </div>
-      <textarea
-        value={loaded ? note : ''}
-        onChange={handleChange}
-        disabled={!loaded}
-        placeholder={loaded ? '자유롭게 메모하세요…' : '불러오는 중…'}
-        className="min-h-0 flex-1 resize-none p-4 text-base leading-relaxed text-gray-900 placeholder:text-gray-300 focus:outline-none disabled:bg-gray-50"
-      />
+
+      {mode === 'ink' ? (
+        loaded && ink !== null
+          ? <InkPad key={cardKey} initialStrokes={ink} onCommit={handleInkCommit} />
+          : <p className="py-10 text-center text-sm text-gray-300">불러오는 중…</p>
+      ) : (
+        <textarea
+          value={loaded ? note : ''}
+          onChange={handleChange}
+          disabled={!loaded}
+          placeholder={loaded ? '자유롭게 메모하세요…' : '불러오는 중…'}
+          className="min-h-0 flex-1 resize-none p-4 text-base leading-relaxed text-gray-900 placeholder:text-gray-300 focus:outline-none disabled:bg-gray-50"
+        />
+      )}
     </div>
   )
 }
@@ -153,25 +191,25 @@ function FeeCalc({ fee, hasInfo, onChange, onPullInfo }) {
         <div className="mt-3 space-y-1.5 rounded-xl bg-white p-3 shadow-sm">
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-500">환산보증금 <span className="text-[11px] text-gray-300">(보증금+월세×100)</span></span>
-            <span className="font-semibold text-gray-700">{formatComma(converted)}원</span>
+            <span className="font-semibold text-gray-700">{formatComma(converted) || 0}원</span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-500">중개보수 <span className="text-[11px] text-gray-400">{BROKER_RATE}%</span></span>
             <span className="font-semibold text-gray-700">
-              {formatComma(brokerFee)}원 <span className="text-[11px] font-normal text-gray-400">(부가세 별도)</span>
+              {formatComma(brokerFee) || 0}원 <span className="text-[11px] font-normal text-gray-400">(부가세 별도)</span>
             </span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-500">권리금 수수료</span>
             <span className="font-semibold text-gray-700">
-              {formatComma(premiumFee)}원 <span className="text-[11px] font-normal text-blue-600">{premiumRate}% 적용</span> <span className="text-[11px] font-normal text-gray-400">(부가세 별도)</span>
+              {formatComma(premiumFee) || 0}원 <span className="text-[11px] font-normal text-blue-600">{premiumRate}% 적용</span> <span className="text-[11px] font-normal text-gray-400">(부가세 별도)</span>
             </span>
           </div>
           <div className="flex items-baseline justify-between border-t border-gray-100 pt-1.5">
             <span className="text-sm font-bold text-gray-800">합계 <span className="text-[11px] font-normal text-gray-400">(부가세 별도)</span></span>
             <span className="text-right">
-              <span className="text-lg font-bold text-blue-700">{formatComma(total)}원</span>
-              <span className="block text-[11px] text-gray-400">부가세 포함 시 {formatComma(totalVat)}원</span>
+              <span className="text-lg font-bold text-blue-700">{formatComma(total) || 0}원</span>
+              <span className="block text-[11px] text-gray-400">부가세 포함 시 {formatComma(totalVat) || 0}원</span>
             </span>
           </div>
         </div>
