@@ -2,20 +2,33 @@ import { useEffect, useRef, useState } from 'react'
 import CaptureBoard from '../components/CaptureBoard.jsx'
 import { loadCardBoard, saveCardBoard, listCardBoards, deleteCardBoard } from '../lib/boardStore.js'
 import { formatPhone, formatComma, parseAmount, formatBizNo } from '../lib/format.js'
+import { loadUi, saveUi } from '../lib/uiState.js'
+import { useBackClose } from '../lib/backNav.js'
 
 // 보드 저장 키 자동 생성 (폼 제거로 전화번호 키 폐지)
 const newBoardKey = () => `cap-${Date.now()}`
 
 // ── 메인 ─────────────────────────────────────────────────────
-export default function ListingTab({ onActiveCard }) {
-  const [view, setView] = useState('home') // home | library | viewer
-  const [boardKey, setBoardKey] = useState(null)
-  const [initBoard, setInitBoard] = useState(null) // 신규 진입 시 초기 보드
+export default function ListingTab({ onActiveCard, active }) {
+  // 새로고침해도 보던 화면(라이브러리/캡처 뷰어)으로 복원
+  const [view, setView] = useState(() => {
+    const s = loadUi('listing')
+    if (s?.view === 'viewer' && s.boardKey) return 'viewer'
+    if (s?.view === 'library') return 'library'
+    return 'home' // home | library | viewer
+  })
+  const [boardKey, setBoardKey] = useState(() => loadUi('listing')?.boardKey ?? null)
+  const [initBoard, setInitBoard] = useState(null) // 신규 진입 시 초기 보드 (복원 시엔 저장소에서 로드)
+
+  useEffect(() => { saveUi('listing', { view, boardKey }) }, [view, boardKey])
 
   // 노트 탭에 현재 보드 키 전달
   useEffect(() => {
     onActiveCard?.(view === 'viewer' ? boardKey : null)
   }, [view, boardKey])
+
+  // 뒤로 가기: 뷰어/라이브러리가 열려 있으면 홈으로 (앱 밖으로 나가지 않음)
+  useBackClose(active && view !== 'home', goHome)
 
   function openNew(image) {
     setBoardKey(newBoardKey())
@@ -36,7 +49,7 @@ export default function ListingTab({ onActiveCard }) {
   }
 
   if (view === 'viewer' && boardKey) {
-    return <CaptureViewer boardKey={boardKey} initBoard={initBoard} onBack={goHome} />
+    return <CaptureViewer boardKey={boardKey} initBoard={initBoard} onBack={goHome} active={active} />
   }
 
   if (view === 'library') {
@@ -172,13 +185,16 @@ function downscaleImage(dataUrl, max = 2048) {
 }
 
 // ── 캡처 뷰어 ────────────────────────────────────────────────
-function CaptureViewer({ boardKey, initBoard, onBack }) {
+function CaptureViewer({ boardKey, initBoard, onBack, active }) {
   const [board, setBoard] = useState(initBoard)
   const [notice, setNotice] = useState(null)
   const [extracting, setExtracting] = useState(false)
   const [infoDraft, setInfoDraft] = useState(null) // 열려 있는 매물 정보 패널의 편집본
   const imageFileRef = useRef()
   const extractedImageRef = useRef(null) // 이번 세션에서 추출을 마친 이미지 (중복 실행 방지)
+
+  // 뒤로 가기: 매물 정보 패널이 열려 있으면 패널만 닫는다
+  useBackClose(active && !!infoDraft, () => setInfoDraft(null))
 
   // 캡처를 열면 자동으로 추출 시작 — 정보가 없는 새 캡처, 또는 이미지를 교체했을 때
   useEffect(() => {
