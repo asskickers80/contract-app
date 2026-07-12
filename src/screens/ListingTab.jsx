@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import CaptureBoard from '../components/CaptureBoard.jsx'
 import { loadCardBoard, saveCardBoard, listCardBoards, deleteCardBoard } from '../lib/boardStore.js'
-import { formatPhone } from '../lib/format.js'
+import { formatPhone, formatComma, parseAmount } from '../lib/format.js'
 
 // 보드 저장 키 자동 생성 (폼 제거로 전화번호 키 폐지)
 const newBoardKey = () => `cap-${Date.now()}`
@@ -154,10 +154,29 @@ function LibraryScreen({ onOpen, onBack }) {
   )
 }
 
+// AI 추출 전 이미지 축소 — 전송 용량(Vercel 4.5MB 제한)과 토큰을 줄인다
+function downscaleImage(dataUrl, max = 1600) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const scale = Math.min(1, max / Math.max(img.width, img.height))
+      const c = document.createElement('canvas')
+      c.width = Math.round(img.width * scale)
+      c.height = Math.round(img.height * scale)
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height)
+      resolve(c.toDataURL('image/jpeg', 0.85))
+    }
+    img.onerror = () => reject(new Error('이미지를 읽을 수 없어요'))
+    img.src = dataUrl
+  })
+}
+
 // ── 캡처 뷰어 ────────────────────────────────────────────────
 function CaptureViewer({ boardKey, initBoard, onBack }) {
   const [board, setBoard] = useState(initBoard)
   const [notice, setNotice] = useState(null)
+  const [extracting, setExtracting] = useState(false)
+  const [infoDraft, setInfoDraft] = useState(null) // 열려 있는 매물 정보 패널의 편집본
   const imageFileRef = useRef()
 
   // 라이브러리에서 열 땐 저장된 키로 보드 로드
@@ -195,12 +214,54 @@ function CaptureViewer({ boardKey, initBoard, onBack }) {
     e.target.value = ''
   }
 
+  // AI로 캡처에서 매물 정보 추출
+  async function handleExtract() {
+    if (!board?.image || extracting) return
+    setExtracting(true)
+    setNotice(null)
+    try {
+      const image = await downscaleImage(board.image)
+      const r = await fetch('/api/extract', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ image }),
+      })
+      const data = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`)
+      // 기존 저장값 위에 새 추출값을 덮되, null(못 찾음)은 기존 값을 지우지 않는다
+      const merged = { ...(board.info || {}) }
+      for (const [k, v] of Object.entries(data.fields || {})) {
+        if (v !== null && v !== undefined && v !== '') merged[k] = v
+      }
+      setInfoDraft(merged)
+    } catch (err) {
+      setNotice(`정보 읽기 실패: ${err.message || err}`)
+      setTimeout(() => setNotice(null), 4000)
+    } finally {
+      setExtracting(false)
+    }
+  }
+
+  function handleInfoSave() {
+    setBoard(prev => ({ ...prev, info: infoDraft }))
+    setInfoDraft(null)
+    setNotice('매물 정보가 저장되었습니다')
+    setTimeout(() => setNotice(null), 2000)
+  }
+
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
       {/* 헤더 */}
       <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 bg-white px-3 py-2">
         <button onClick={onBack} className="rounded-xl px-3 py-1.5 text-sm font-bold text-gray-500 active:bg-gray-100">← 목록으로</button>
         <span className="flex-1 truncate text-center text-sm font-bold text-gray-900">캡처 뷰어</span>
+        <button
+          onClick={() => (board?.info ? setInfoDraft({ ...board.info }) : handleExtract())}
+          disabled={!board?.image || extracting}
+          className="rounded-lg bg-violet-100 px-3 py-1.5 text-xs font-bold text-violet-700 active:bg-violet-200 disabled:opacity-40"
+        >
+          {extracting ? '읽는 중…' : board?.info ? '매물 정보' : 'AI 읽기'}
+        </button>
         <button onClick={() => imageFileRef.current?.click()}
           className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 active:bg-gray-200">
           {board?.image ? '이미지 교체' : '이미지 추가'}
@@ -224,6 +285,89 @@ function CaptureViewer({ boardKey, initBoard, onBack }) {
           ? <CaptureBoard board={board} onBoardChange={setBoard} />
           : <p className="py-8 text-center text-xs text-gray-300">이미지 추가 버튼으로 사진첩에서 불러올 수 있어요</p>
         }
+      </div>
+
+      {/* 매물 정보 확인·수정 패널 (AI 추출 결과) */}
+      {infoDraft && (
+        <InfoPanel
+          info={infoDraft}
+          setInfo={setInfoDraft}
+          extracting={extracting}
+          onReextract={handleExtract}
+          onSave={handleInfoSave}
+          onClose={() => setInfoDraft(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+// ── 매물 정보 패널 ───────────────────────────────────────────
+const INFO_FIELDS = [
+  ['storeName', '상호', 'text'],
+  ['businessType', '업종', 'text'],
+  ['address', '소재지', 'text'],
+  ['deposit', '보증금', 'money'],
+  ['monthlyRent', '월세', 'money'],
+  ['premium', '희망권리금', 'money'],
+  ['maintenanceFee', '관리비', 'money'],
+  ['phone', '전화번호', 'phone'],
+  ['ownerName', '연락처 이름', 'text'],
+]
+
+function InfoPanel({ info, setInfo, extracting, onReextract, onSave, onClose }) {
+  const set = (key, value) => setInfo(prev => ({ ...prev, [key]: value }))
+
+  const field = ([key, label, type]) => (
+    <label key={key} className={`block ${type === 'money' ? '' : 'col-span-2'}`}>
+      <span className="text-xs font-semibold text-gray-500">{label}</span>
+      {type === 'money' ? (
+        <div className="mt-1 flex items-center gap-1">
+          <input type="text" inputMode="numeric"
+            value={info[key] == null || info[key] === '' ? '' : formatComma(info[key])}
+            onChange={e => set(key, e.target.value.trim() === '' ? null : parseAmount(e.target.value))}
+            className="w-full min-w-0 rounded-xl border border-gray-300 px-2 py-2.5 text-right text-base focus:border-blue-500 focus:outline-none" />
+          <span className="shrink-0 text-xs text-gray-400">원</span>
+        </div>
+      ) : (
+        <input type={type === 'phone' ? 'tel' : 'text'}
+          inputMode={type === 'phone' ? 'numeric' : undefined}
+          value={info[key] || ''}
+          onChange={e => set(key, type === 'phone' ? formatPhone(e.target.value) : e.target.value)}
+          className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2.5 text-base focus:border-blue-500 focus:outline-none" />
+      )}
+    </label>
+  )
+
+  return (
+    <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
+      <div
+        className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex shrink-0 items-center gap-2 border-b border-gray-100 px-4 py-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-gray-900">매물 정보</p>
+            <p className="text-[11px] text-gray-400">AI가 읽은 내용이에요 — 확인·수정 후 저장하세요</p>
+          </div>
+          <button onClick={onReextract} disabled={extracting}
+            className="rounded-lg bg-violet-100 px-3 py-2 text-xs font-bold text-violet-700 active:bg-violet-200 disabled:opacity-40">
+            {extracting ? '읽는 중…' : '다시 읽기'}
+          </button>
+          <button onClick={onClose}
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-lg text-gray-400 active:bg-gray-100">✕</button>
+        </div>
+
+        <div className="grid flex-1 grid-cols-2 gap-x-3 gap-y-3 overflow-y-auto px-4 py-3">
+          {INFO_FIELDS.map(field)}
+        </div>
+
+        <div className="shrink-0 border-t border-gray-100 p-3">
+          <button onClick={onSave}
+            className="w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white active:bg-blue-700">
+            정보 저장
+          </button>
+        </div>
       </div>
     </div>
   )
