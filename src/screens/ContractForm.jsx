@@ -42,7 +42,8 @@ export default function ContractForm({ draft, onChange, onGenerate }) {
   const set = patch => onChange({ ...draft, ...patch })
 
   function selectProduct(p) {
-    set({ productKey: p.key, fee: p.fee, vat: p.vat, total: p.total })
+    // 상품명도 함께 반영 — 계약서 '광고상품명' 칸에 최상단광고/중간광고/하단광고로 찍힌다
+    set({ productKey: p.key, productName: p.name, fee: p.fee, vat: p.vat, total: p.total })
   }
   // 광고료 수정 → 부가세 10%·총액 자동 재계산 / 부가세 수정 → 총액 재계산
   function changeFee(v) {

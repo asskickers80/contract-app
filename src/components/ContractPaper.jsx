@@ -14,6 +14,7 @@ const dotDate = iso => {
 
 function Overlay({ pos, text }) {
   if (!text) return null
+  const cellPatch = typeof pos.patch === 'object' ? pos.patch : null
   const style = {
     position: 'absolute',
     left: `${pos.x * 100}%`,
@@ -24,10 +25,27 @@ function Overlay({ pos, text }) {
     fontWeight: pos.bold ? 700 : 500,
     color: '#141a59',
     whiteSpace: 'nowrap',
-    background: pos.patch ? 'rgba(255,255,255,0.92)' : 'transparent',
-    padding: pos.patch ? '0.2em 0.3em' : 0,
+    background: pos.patch && !cellPatch ? 'rgba(255,255,255,0.92)' : 'transparent',
+    padding: pos.patch && !cellPatch ? '0.2em 0.3em' : 0,
   }
-  return <span style={style}>{text}</span>
+  return (
+    <>
+      {cellPatch && (
+        <span
+          style={{
+            position: 'absolute',
+            left: `${cellPatch.x0 * 100}%`,
+            width: `${(cellPatch.x1 - cellPatch.x0) * 100}%`,
+            top: `${pos.y * 100}%`,
+            height: `${(pos.size / A4_IMG_W) * 160}cqw`,
+            transform: 'translateY(-92%)',
+            background: 'rgba(255,255,255,1)',
+          }}
+        />
+      )}
+      <span style={style}>{text}</span>
+    </>
+  )
 }
 
 export default function ContractPaper({ contract }) {
