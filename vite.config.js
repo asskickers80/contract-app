@@ -34,6 +34,14 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     define: {
       'import.meta.env.VITE_PROXY_ENABLED': JSON.stringify(target ? '1' : ''),
+      // 빌드 시각 스탬프 — 기기가 어떤 버전을 실행 중인지 화면에서 확인용
+      __BUILD_TIME__: JSON.stringify(
+        new Date().toLocaleString('ko-KR', {
+          timeZone: 'Asia/Seoul',
+          year: '2-digit', month: 'numeric', day: 'numeric',
+          hour: '2-digit', minute: '2-digit', hour12: false,
+        })
+      ),
     },
     server: { host: true, proxy },
     preview: { host: true, proxy },

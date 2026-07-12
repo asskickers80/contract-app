@@ -104,6 +104,8 @@ function HomeScreen({ onNew, onLibrary }) {
         className="hidden"
         onChange={handleFileChange}
       />
+
+      <p className="text-[11px] text-gray-300">버전 {__BUILD_TIME__} 빌드</p>
     </div>
   )
 }
