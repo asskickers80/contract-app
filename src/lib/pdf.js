@@ -121,7 +121,7 @@ async function prepareInk(dataUrl) {
     }
   }
   if (x1 < x0 || y1 < y0) return null // 빈 캔버스
-  const r = Math.max(0.6, (y1 - y0) * 0.007) // 아주 살짝만 보강 — 글자 형태 유지가 최우선
+  const r = Math.max(0.8, (y1 - y0) * 0.011) // 살짝 보강 — 글자 형태 유지 (실서명 검수로 확정한 두께)
   const pad = Math.ceil(r) + 2
   const out = document.createElement('canvas')
   out.width = x1 - x0 + 1 + pad * 2
