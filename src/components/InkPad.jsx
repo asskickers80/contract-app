@@ -75,13 +75,15 @@ export default function InkPad({ initialStrokes, onCommit }) {
   }
 
   function drawDot(ctx, s, pt, rng) {
-    ctx.globalAlpha = s.tool === 'pencil' ? 0.35 + 0.2 * (pt.p ?? 0.5) : 1
+    if (s.tool === 'pencil' && rng) {
+      // 점도 입자 스탬프로 — 톡 찍은 연필 자국
+      drawPencilSegment(ctx, s, pt, { x: pt.x + 0.6, y: pt.y + 0.6, p: pt.p }, rng)
+      return
+    }
     ctx.beginPath()
     ctx.arc(pt.x, pt.y, Math.max(0.7, s.size * (pt.p ?? 0.5)), 0, Math.PI * 2)
     ctx.fillStyle = s.color
     ctx.fill()
-    ctx.globalAlpha = 1
-    if (s.tool === 'pencil' && rng) rng() // 재현성 유지용 소비
   }
 
   function drawSegment(ctx, s, a, b, rng) {
@@ -94,33 +96,34 @@ export default function InkPad({ initialStrokes, onCommit }) {
     ctx.stroke()
   }
 
-  // 연필: 필압에 따라 진해지고, 흑연처럼 결이 있는 질감 (시드 고정 → 다시 그려도 동일)
+  // 연필: 흑연 입자를 경로를 따라 뿌리는 스탬프 방식 — 중심은 진하고 가장자리는
+  // 입자가 흩어져 종이에 갈리는 질감이 난다. 필압이 셀수록 진하고 굵게.
+  // (시드 고정 난수 → 다시 그려도 동일하게 재현)
   function drawPencilSegment(ctx, s, a, b, rng) {
-    const p = b.p ?? 0.5
-    const w = Math.max(0.8, s.size * (p + 0.35))
-    ctx.strokeStyle = s.color
-    ctx.lineCap = 'round'
-    // 살짝 어긋난 두 겹의 반투명 선 → 흑연의 결
-    for (let k = 0; k < 2; k++) {
-      const ox = (rng() - 0.5) * w * 0.7
-      const oy = (rng() - 0.5) * w * 0.7
-      ctx.globalAlpha = (0.22 + 0.28 * p) * (0.75 + 0.5 * rng())
-      ctx.lineWidth = w * (0.55 + 0.35 * rng())
+    const dx = b.x - a.x, dy = b.y - a.y
+    const dist = Math.hypot(dx, dy)
+    const steps = Math.max(1, Math.ceil(dist / 1.3))
+    ctx.fillStyle = s.color
+    for (let i = 0; i < steps; i++) {
+      const t = (i + 1) / steps
+      const p = (a.p ?? 0.5) + ((b.p ?? 0.5) - (a.p ?? 0.5)) * t // 필압 보간
+      const w = Math.max(1.2, s.size * (p + 0.5))
+      const cx = a.x + dx * t
+      const cy = a.y + dy * t
+      // 진한 심지 (중심부)
+      ctx.globalAlpha = 0.16 + 0.22 * p
       ctx.beginPath()
-      ctx.moveTo(a.x + ox, a.y + oy)
-      ctx.lineTo(b.x + ox, b.y + oy)
-      ctx.stroke()
-    }
-    // 종이에 씹힌 흑연 알갱이
-    if (rng() < 0.4) {
-      const t = rng()
-      ctx.globalAlpha = 0.15
-      ctx.fillStyle = s.color
-      ctx.fillRect(
-        a.x + (b.x - a.x) * t + (rng() - 0.5) * w * 1.6,
-        a.y + (b.y - a.y) * t + (rng() - 0.5) * w * 1.6,
-        0.8, 0.8,
-      )
+      ctx.arc(cx + (rng() - 0.5) * 0.4, cy + (rng() - 0.5) * 0.4, w * 0.28, 0, Math.PI * 2)
+      ctx.fill()
+      // 흩어지는 흑연 입자 (가장자리로 갈수록 성김)
+      const grains = 3 + Math.floor(w * 1.6)
+      for (let k = 0; k < grains; k++) {
+        const r = (rng() + rng() - 1) * w * 0.62 // 중심에 몰리는 분포
+        const ang = rng() * Math.PI * 2
+        ctx.globalAlpha = (0.05 + 0.14 * p) * (0.4 + rng())
+        const sz = 0.45 + rng() * 0.75
+        ctx.fillRect(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r, sz, sz)
+      }
     }
     ctx.globalAlpha = 1
   }
