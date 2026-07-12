@@ -148,12 +148,29 @@ export default function NoteTab({ cardKey }) {
 
 // ── 수수료 계산기 ────────────────────────────────────────────
 function FeeCalc({ fee, hasInfo, onChange, onPullInfo }) {
+  const [open, setOpen] = useState(true) // 기본은 펼침 — 노트 쓸 때 접어서 공간 확보
   // 환산보증금 = 보증금 + 월세 × 100
   const converted = (fee.deposit || 0) + (fee.monthlyRent || 0) * 100
   const brokerFee = Math.round(converted * BROKER_RATE / 100)
   const { fee: premiumFee, label: premiumLabel } = premiumFeeOf(fee.premium || 0)
   const total = brokerFee + premiumFee
   const totalVat = Math.round(total * 1.1)
+
+  // 접힌 상태: 합계 한 줄 요약만
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="flex w-full shrink-0 items-center gap-2 border-b border-gray-200 bg-blue-50/50 px-4 py-2.5 text-left"
+      >
+        <span className="text-sm font-bold text-gray-800">수수료</span>
+        <span className="text-sm font-bold text-blue-700">{formatComma(total) || 0}원</span>
+        <span className="text-[11px] text-gray-400">(부가세 별도{premiumLabel ? ` · 권리금 ${premiumLabel}` : ''})</span>
+        <span className="flex-1" />
+        <span className="text-xs font-semibold text-gray-400">펼치기 ▾</span>
+      </button>
+    )
+  }
 
   const money = (label, key) => (
     <label className="block min-w-0">
@@ -172,8 +189,9 @@ function FeeCalc({ fee, hasInfo, onChange, onPullInfo }) {
   return (
     <div className="shrink-0 border-b border-gray-200 bg-blue-50/50 px-4 py-3">
       <div className="mx-auto max-w-2xl">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-bold text-gray-800">수수료 계산</p>
+          <span className="flex-1" />
           {hasInfo
             ? <button onClick={onPullInfo}
                 className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-blue-600 shadow-sm active:bg-blue-50">
@@ -181,6 +199,10 @@ function FeeCalc({ fee, hasInfo, onChange, onPullInfo }) {
               </button>
             : <span className="text-[11px] text-gray-400">매물카드에서 &lsquo;AI 읽기&rsquo;를 하면 자동으로 채워져요</span>
           }
+          <button onClick={() => setOpen(false)}
+            className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-gray-500 shadow-sm active:bg-gray-50">
+            접기 ▴
+          </button>
         </div>
 
         <div className="mt-2 grid grid-cols-3 gap-2">
