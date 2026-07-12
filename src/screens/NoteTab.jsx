@@ -156,18 +156,22 @@ function FeeCalc({ fee, hasInfo, onChange, onPullInfo }) {
   const total = brokerFee + premiumFee
   const totalVat = Math.round(total * 1.1)
 
-  // 접힌 상태: 합계 한 줄 요약만
+  // 접힌 상태: 수수료 총액 한 줄 요약
   if (!open) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex w-full shrink-0 items-center gap-2 border-b border-gray-200 bg-blue-50/50 px-4 py-2.5 text-left"
+        className="flex w-full shrink-0 items-baseline gap-2 border-b border-gray-200 bg-blue-50/50 px-4 py-2.5 text-left"
       >
-        <span className="text-sm font-bold text-gray-800">수수료</span>
-        <span className="text-sm font-bold text-blue-700">{formatComma(total) || 0}원</span>
-        <span className="text-[11px] text-gray-400">(부가세 별도{premiumLabel ? ` · 권리금 ${premiumLabel}` : ''})</span>
+        <span className="text-sm font-bold text-gray-800">수수료 합계</span>
+        <span className="text-base font-bold text-blue-700">{formatComma(total) || 0}원</span>
+        <span className="text-[11px] text-gray-400">(부가세 별도)</span>
+        <span className="text-xs text-gray-500">부가세 포함 {formatComma(totalVat) || 0}원</span>
+        {premiumLabel?.startsWith('일괄') && (
+          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700">{premiumLabel}</span>
+        )}
         <span className="flex-1" />
-        <span className="text-xs font-semibold text-gray-400">펼치기 ▾</span>
+        <span className="shrink-0 text-xs font-semibold text-gray-400">펼치기 ▾</span>
       </button>
     )
   }
