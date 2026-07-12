@@ -60,7 +60,7 @@ export default function App() {
         </div>
         {active === 1 && <NoteTab cardKey={activeCardKey} />}
         <div className={active === 2 ? 'h-full' : 'hidden'}>
-          <ContractTab key={contractKey} onComplete={handleContractComplete} />
+          <ContractTab key={contractKey} cardKey={activeCardKey} active={active === 2} onComplete={handleContractComplete} />
         </div>
         {active === 3 && <DeliveryTab result={contractResult} onNewContract={handleNewContract} />}
       </div>

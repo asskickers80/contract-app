@@ -2,7 +2,8 @@
 // Vercel 환경변수 GEMINI_API_KEY 필요 — https://aistudio.google.com 에서 무료 발급
 // 무료 등급 주의: 무료 API로 보낸 데이터는 구글 서비스 개선(학습)에 사용될 수 있다.
 
-const MODEL = 'gemini-2.5-flash'
+// 정확도 우선: pro를 먼저 쓰고, 한도 초과/불가 시 flash로 폴백
+const MODELS = ['gemini-2.5-pro', 'gemini-2.5-flash']
 
 // Gemini structured output 스키마 — 항상 이 형태의 JSON으로 응답을 강제한다
 const SCHEMA = {
@@ -11,6 +12,7 @@ const SCHEMA = {
     storeName: { type: 'STRING', nullable: true, description: '상호(가게 이름)' },
     businessType: { type: 'STRING', nullable: true, description: '업종' },
     address: { type: 'STRING', nullable: true, description: '소재지/주소' },
+    bizNo: { type: 'STRING', nullable: true, description: '사업자등록번호 (숫자 10자리, 000-00-00000 형식)' },
     deposit: { type: 'NUMBER', nullable: true, description: '보증금(원 단위 숫자)' },
     monthlyRent: { type: 'NUMBER', nullable: true, description: '월세(원 단위 숫자)' },
     premium: { type: 'NUMBER', nullable: true, description: '희망권리금(원 단위 숫자)' },
@@ -20,12 +22,17 @@ const SCHEMA = {
   },
 }
 
-const PROMPT = `이 이미지는 상가 매물 정보 페이지의 화면 캡처다.
-이미지에서 다음 항목을 찾아 JSON으로 추출하라:
-상호, 업종, 소재지(주소), 보증금, 월세, 희망권리금(권리금), 관리비, 전화번호, 연락처 이름.
-- 금액은 원 단위 숫자로 변환한다. 예: "3,000만" → 30000000, "1억 2000" → 120000000.
-- 이미지에서 확인할 수 없는 항목은 null로 둔다. 절대 추측하지 마라.
-- 전화번호는 숫자와 하이픈만 남긴다.`
+const PROMPT = `이 이미지는 상가 매물 정보 페이지의 화면 캡처다. 정확도가 가장 중요하다.
+이미지를 꼼꼼히 읽고 다음 항목을 JSON으로 추출하라:
+상호, 업종, 소재지(주소), 사업자등록번호, 보증금, 월세, 희망권리금(권리금), 관리비, 전화번호, 연락처 이름.
+
+규칙:
+- 표/라벨 형식이면 라벨과 값을 정확히 대응시켜 읽는다. 옆 칸의 다른 항목 값과 절대 섞지 마라.
+- 금액은 원 단위 숫자로 변환한다. 예: "3,000만" → 30000000, "1억 2000" → 120000000, "5,000/300" 같은 표기는 보증금 5000만/월세 300만이다.
+- 사업자등록번호는 숫자 10자리(000-00-00000)다. 전화번호와 혼동하지 마라.
+- 전화번호는 숫자와 하이픈만 남긴다 (010/02/031 등으로 시작).
+- 이미지에서 확인할 수 없는 항목은 null로 둔다. 절대 추측하거나 지어내지 마라.
+- 최종 답 전에 각 값을 이미지에서 한 번 더 대조 확인하라.`
 
 export const config = { api: { bodyParser: { sizeLimit: '4mb' } } }
 
@@ -59,38 +66,45 @@ export default async function handler(req, res) {
       return
     }
 
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { inline_data: { mime_type: parsed.mimeType, data: parsed.data } },
-              { text: PROMPT },
-            ],
-          }],
-          generationConfig: {
-            response_mime_type: 'application/json',
-            response_schema: SCHEMA,
-            temperature: 0,
-          },
-        }),
+    const body = JSON.stringify({
+      contents: [{
+        parts: [
+          { inline_data: { mime_type: parsed.mimeType, data: parsed.data } },
+          { text: PROMPT },
+        ],
+      }],
+      generationConfig: {
+        response_mime_type: 'application/json',
+        response_schema: SCHEMA,
+        temperature: 0,
       },
-    )
+    })
 
-    const data = await r.json().catch(() => ({}))
-    if (!r.ok) {
-      const msg = data?.error?.message || `Gemini API 오류 (HTTP ${r.status})`
-      // 429 = 무료 등급 사용량 초과 — 잠시 후 재시도 안내
-      res.status(r.status === 429 ? 429 : 502).json({
-        error: r.status === 429 ? '무료 사용량 한도 초과 — 잠시 후 다시 시도해 주세요' : msg,
-      })
-      return
+    // pro 먼저 시도, 실패(한도 초과 등) 시 flash로 폴백
+    let lastStatus = 502
+    let lastMsg = 'Gemini API 오류'
+    for (const model of MODELS) {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
+          body,
+        },
+      )
+      const data = await r.json().catch(() => ({}))
+      if (r.ok) {
+        res.status(200).json({ fields: pickFields(data), model })
+        return
+      }
+      lastStatus = r.status
+      lastMsg = data?.error?.message || `Gemini API 오류 (HTTP ${r.status})`
     }
 
-    res.status(200).json({ fields: pickFields(data) })
+    // 모든 모델 실패 — 429 = 무료 등급 사용량 초과
+    res.status(lastStatus === 429 ? 429 : 502).json({
+      error: lastStatus === 429 ? '무료 사용량 한도 초과 — 잠시 후 다시 시도해 주세요' : lastMsg,
+    })
   } catch (err) {
     res.status(502).json({ error: `추출 실패: ${err.message || err}` })
   }
