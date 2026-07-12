@@ -214,20 +214,20 @@ function PostItNote({ note, defaultExpanded, wasDragged, onUpdate, onDelete, onD
       : (note.text?.slice(0, 18) || '빈 메모')
     return (
       <div
-        className="absolute cursor-pointer touch-none rounded-lg px-3 py-2.5 shadow-md"
+        className="absolute cursor-pointer touch-none rounded-xl px-5 py-4 shadow-lg"
         style={{
           left: `${note.x * 100}%`, top: `${note.y * 100}%`,
-          backgroundColor: note.color, maxWidth: 200, transform: 'rotate(-0.5deg)',
+          backgroundColor: note.color, maxWidth: 300, minWidth: 150, transform: 'rotate(-0.5deg)',
         }}
         onPointerDown={onDragStart}
         onClick={() => { if (!wasDragged?.()) setExpanded(true) }}
       >
-        <div className="flex items-center gap-2">
-          <span className="flex-1 truncate text-sm font-medium text-gray-700">{preview}</span>
+        <div className="flex items-center gap-3">
+          <span className="flex-1 truncate text-lg font-semibold text-gray-700">{preview}</span>
           <button
             onPointerDown={e => e.stopPropagation()}
             onClick={e => { e.stopPropagation(); onDelete() }}
-            className="-m-2 p-2 text-sm text-black/30 active:text-black/70"
+            className="-m-3 p-3 text-lg text-black/30 active:text-black/70"
           >✕</button>
         </div>
       </div>
