@@ -5,6 +5,10 @@ const COLORS = ['#fef3c7', '#fce7f3', '#dcfce7', '#dbeafe']
 export default function CaptureBoard({ board, onBoardChange }) {
   const containerRef = useRef(null)
   const dragRef = useRef(null)
+  const resizeRef = useRef(null)
+  const movedRef = useRef(false) // 드래그로 이동했으면 놓을 때 펼침 클릭 무시
+  const [placing, setPlacing] = useState(false)
+  const [newNoteId, setNewNoteId] = useState(null)
 
   const notes = board?.notes || []
 
@@ -12,17 +16,23 @@ export default function CaptureBoard({ board, onBoardChange }) {
     onBoardChange({ ...board, notes: typeof updater === 'function' ? updater(notes) : updater })
   }
 
-  function addNote() {
+  function placeNote(e) {
+    if (!placing) return
+    // 이미지(배경)를 눌렀을 때만 배치 — 기존 메모 클릭은 제외
+    if (e.target.tagName !== 'IMG' && e.target !== containerRef.current) return
+    const p = pointerPos(e)
     const id = `n${Date.now()}`
     setNotes(ns => [...ns, {
       id,
-      x: 0.05 + (ns.length % 4) * 0.04,
-      y: 0.05 + (ns.length % 4) * 0.04,
+      x: Math.min(0.85, Math.max(0, p.x - 0.02)),
+      y: Math.min(0.9, Math.max(0, p.y - 0.02)),
       color: COLORS[ns.length % COLORS.length],
       text: '',
       strokes: [],
       mode: 'text',
     }])
+    setNewNoteId(id)
+    setPlacing(false)
   }
 
   function pointerPos(e) {
@@ -32,14 +42,33 @@ export default function CaptureBoard({ board, onBoardChange }) {
 
   function startDrag(e, note) {
     e.currentTarget.setPointerCapture?.(e.pointerId)
+    movedRef.current = false
     const p = pointerPos(e)
-    dragRef.current = { id: note.id, dx: p.x - note.x, dy: p.y - note.y }
+    dragRef.current = { id: note.id, dx: p.x - note.x, dy: p.y - note.y, sx: p.x, sy: p.y }
+  }
+
+  function startResize(e, note) {
+    e.stopPropagation()
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+    const rect = containerRef.current.getBoundingClientRect()
+    resizeRef.current = {
+      id: note.id, startX: e.clientX, startY: e.clientY,
+      w: note.w ?? 0.42, h: note.h ?? 120, cw: rect.width,
+    }
   }
 
   function onDrag(e) {
+    const r = resizeRef.current
+    if (r) {
+      const w = Math.min(0.9, Math.max(0.15, r.w + (e.clientX - r.startX) / r.cw))
+      const h = Math.min(400, Math.max(60, r.h + (e.clientY - r.startY)))
+      setNotes(ns => ns.map(n => n.id === r.id ? { ...n, w, h } : n))
+      return
+    }
     const d = dragRef.current
     if (!d) return
     const p = pointerPos(e)
+    if (Math.abs(p.x - d.sx) + Math.abs(p.y - d.sy) > 0.01) movedRef.current = true
     setNotes(ns => ns.map(n => n.id === d.id
       ? { ...n, x: Math.min(0.85, Math.max(0, p.x - d.dx)), y: Math.min(0.9, Math.max(0, p.y - d.dy)) }
       : n
@@ -52,23 +81,29 @@ export default function CaptureBoard({ board, onBoardChange }) {
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center gap-2 pb-2">
         <button
-          onClick={addNote}
-          className="h-10 rounded-xl bg-amber-400 px-4 text-sm font-bold text-amber-950 shadow-sm active:bg-amber-500"
+          onClick={() => setPlacing(p => !p)}
+          className={`h-10 rounded-xl px-4 text-sm font-bold shadow-sm ${
+            placing
+              ? 'bg-amber-600 text-white active:bg-amber-700'
+              : 'bg-amber-400 text-amber-950 active:bg-amber-500'
+          }`}
         >
-          + 메모 붙이기
+          {placing ? '위치 선택 중… (취소)' : '+ 메모 붙이기'}
         </button>
         <span className="min-w-0 flex-1 truncate text-right text-[11px] text-gray-300">
-          {board.capturedAt ? `캡처: ${new Date(board.capturedAt).toLocaleString('ko-KR')}` : ''}
-          {' · '}헤더 드래그, 접기(−)로 축소
+          {placing
+            ? '이미지에서 원하는 위치를 눌러 주세요'
+            : `${board.capturedAt ? `캡처: ${new Date(board.capturedAt).toLocaleString('ko-KR')} · ` : ''}메모를 누르면 펼쳐져요 · 드래그로 이동, 모서리로 크기 조절`}
         </span>
       </div>
 
       <div
         ref={containerRef}
-        className="relative min-h-0 flex-1 select-none overflow-hidden rounded-xl border border-gray-200 bg-gray-50 shadow-sm"
+        className={`relative min-h-0 flex-1 select-none overflow-hidden rounded-xl border border-gray-200 bg-gray-50 shadow-sm ${placing ? 'cursor-crosshair' : ''}`}
+        onClick={placeNote}
         onPointerMove={onDrag}
-        onPointerUp={() => { dragRef.current = null }}
-        onPointerCancel={() => { dragRef.current = null }}
+        onPointerUp={() => { dragRef.current = null; resizeRef.current = null }}
+        onPointerCancel={() => { dragRef.current = null; resizeRef.current = null }}
       >
         <img src={board.image} alt="캡처된 화면" className="h-full w-full object-contain" draggable={false} />
 
@@ -76,9 +111,12 @@ export default function CaptureBoard({ board, onBoardChange }) {
           <PostItNote
             key={note.id}
             note={note}
+            defaultExpanded={note.id === newNoteId}
+            wasDragged={() => movedRef.current}
             onUpdate={updated => setNotes(ns => ns.map(n => n.id === note.id ? updated : n))}
             onDelete={() => setNotes(ns => ns.filter(n => n.id !== note.id))}
             onDragStart={e => startDrag(e, note)}
+            onResizeStart={e => startResize(e, note)}
           />
         ))}
       </div>
@@ -87,8 +125,8 @@ export default function CaptureBoard({ board, onBoardChange }) {
 }
 
 // ── 포스트잇 ────────────────────────────────────────────────────
-function PostItNote({ note, onUpdate, onDelete, onDragStart }) {
-  const [expanded, setExpanded] = useState(true)
+function PostItNote({ note, defaultExpanded, wasDragged, onUpdate, onDelete, onDragStart, onResizeStart }) {
+  const [expanded, setExpanded] = useState(!!defaultExpanded)
   const canvasRef = useRef(null)
   const activeStroke = useRef(null)
 
@@ -110,7 +148,7 @@ function PostItNote({ note, onUpdate, onDelete, onDragStart }) {
       ;(note.strokes || []).forEach(s => redrawStroke(ctx, s, rect.width, rect.height))
     })
     return () => cancelAnimationFrame(raf)
-  }, [note.mode, expanded])
+  }, [note.mode, expanded, note.w, note.h])
 
   function redrawStroke(ctx, stroke, w, h) {
     if (!stroke || stroke.length < 2) return
@@ -182,7 +220,7 @@ function PostItNote({ note, onUpdate, onDelete, onDragStart }) {
           backgroundColor: note.color, maxWidth: 120, transform: 'rotate(-0.5deg)',
         }}
         onPointerDown={onDragStart}
-        onClick={() => setExpanded(true)}
+        onClick={() => { if (!wasDragged?.()) setExpanded(true) }}
       >
         <div className="flex items-center gap-1">
           <span className="flex-1 truncate text-xs text-gray-700">{preview}</span>
@@ -202,7 +240,7 @@ function PostItNote({ note, onUpdate, onDelete, onDragStart }) {
       className="absolute rounded-sm shadow-lg"
       style={{
         left: `${note.x * 100}%`, top: `${note.y * 100}%`,
-        backgroundColor: note.color, width: '42%', minWidth: 140,
+        backgroundColor: note.color, width: `${(note.w ?? 0.42) * 100}%`, minWidth: 140,
         transform: 'rotate(-0.5deg)',
       }}
     >
@@ -241,7 +279,7 @@ function PostItNote({ note, onUpdate, onDelete, onDragStart }) {
           <canvas
             ref={canvasRef}
             className="block w-full rounded bg-white/50"
-            style={{ height: 120, touchAction: 'none' }}
+            style={{ height: note.h ?? 120, touchAction: 'none' }}
             onPointerDown={onCanvasPointerDown}
             onPointerMove={onCanvasPointerMove}
             onPointerUp={onCanvasPointerUp}
@@ -263,11 +301,18 @@ function PostItNote({ note, onUpdate, onDelete, onDragStart }) {
           defaultValue={note.text}
           onPointerDown={e => e.stopPropagation()}
           onBlur={e => onUpdate({ ...note, text: e.target.value })}
-          rows={4}
+          style={{ height: note.h ?? 96 }}
           className="block w-full resize-none bg-transparent px-2 pb-2 text-sm leading-snug text-gray-900 focus:outline-none"
           placeholder="메모 입력…"
         />
       )}
+
+      {/* 크기 조절 핸들 */}
+      <div
+        onPointerDown={onResizeStart}
+        className="absolute -bottom-1 -right-1 flex h-6 w-6 cursor-nwse-resize items-end justify-end rounded-br-sm text-[13px] leading-none text-black/25 active:text-black/60"
+        style={{ touchAction: 'none' }}
+      >◢</div>
     </div>
   )
 }
