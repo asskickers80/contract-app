@@ -2,26 +2,23 @@ import { useEffect, useRef, useState } from 'react'
 import { loadCardBoard, saveCardBoard } from '../lib/boardStore.js'
 import { formatComma, parseAmount } from '../lib/format.js'
 
-// 수수료 요율 기본값 — 사무소 공통 설정이라 localStorage에 기억한다
-const DEFAULT_RATES = { brokerRate: 0.9, premiumRate: 10 }
-
-function loadRates() {
-  try {
-    return { ...DEFAULT_RATES, ...JSON.parse(localStorage.getItem('contract.feeRates') || '{}') }
-  } catch {
-    return { ...DEFAULT_RATES }
-  }
+// 요율 고정 규칙
+const BROKER_RATE = 0.9 // 중개보수: 환산보증금의 0.9%
+// 권리금 수수료: 1억 미만 5%, 1억 이상 2억 미만 4%, 2억 이상 3%
+function premiumRateOf(premium) {
+  if (premium >= 200000000) return 3
+  if (premium >= 100000000) return 4
+  return 5
 }
 
 // 보드의 매물 정보(AI 추출)와 저장된 계산값으로 계산기 초기값 구성
 function initFee(board) {
   const info = board?.info || {}
+  const saved = board?.fee || {} // 이 카드에서 계산하던 값이 있으면 그것을 우선
   return {
-    deposit: info.deposit ?? 0,
-    monthlyRent: info.monthlyRent ?? 0,
-    premium: info.premium ?? 0,
-    ...loadRates(),
-    ...(board?.fee || {}), // 이 카드에서 계산하던 값이 있으면 그것을 우선
+    deposit: saved.deposit ?? info.deposit ?? 0,
+    monthlyRent: saved.monthlyRent ?? info.monthlyRent ?? 0,
+    premium: saved.premium ?? info.premium ?? 0,
   }
 }
 
@@ -62,9 +59,6 @@ export default function NoteTab({ cardKey }) {
   function updateFee(patch) {
     const next = { ...fee, ...patch }
     setFee(next)
-    localStorage.setItem('contract.feeRates', JSON.stringify({
-      brokerRate: next.brokerRate, premiumRate: next.premiumRate,
-    }))
     if (!cardKey) return
     clearTimeout(feeTimer.current)
     feeTimer.current = setTimeout(async () => {
@@ -116,8 +110,9 @@ export default function NoteTab({ cardKey }) {
 function FeeCalc({ fee, hasInfo, onChange, onPullInfo }) {
   // 환산보증금 = 보증금 + 월세 × 100
   const converted = (fee.deposit || 0) + (fee.monthlyRent || 0) * 100
-  const brokerFee = Math.round(converted * (fee.brokerRate || 0) / 100)
-  const premiumFee = Math.round((fee.premium || 0) * (fee.premiumRate || 0) / 100)
+  const brokerFee = Math.round(converted * BROKER_RATE / 100)
+  const premiumRate = premiumRateOf(fee.premium || 0)
+  const premiumFee = Math.round((fee.premium || 0) * premiumRate / 100)
   const total = brokerFee + premiumFee
   const totalVat = Math.round(total * 1.1)
 
@@ -133,16 +128,6 @@ function FeeCalc({ fee, hasInfo, onChange, onPullInfo }) {
         <span className="shrink-0 text-[11px] text-gray-400">원</span>
       </div>
     </label>
-  )
-
-  const rate = (key) => (
-    <span className="inline-flex items-center gap-0.5">
-      <input type="number" inputMode="decimal" step="0.1" min="0"
-        value={fee[key] ?? ''}
-        onChange={e => onChange({ [key]: e.target.value === '' ? 0 : Number(e.target.value) })}
-        className="w-14 rounded-lg border border-gray-300 px-1.5 py-1 text-right text-sm focus:border-blue-500 focus:outline-none" />
-      <span className="text-[11px] text-gray-400">%</span>
-    </span>
   )
 
   return (
@@ -171,21 +156,26 @@ function FeeCalc({ fee, hasInfo, onChange, onPullInfo }) {
             <span className="font-semibold text-gray-700">{formatComma(converted)}원</span>
           </div>
           <div className="flex items-center justify-between text-sm">
-            <span className="flex items-center gap-1.5 text-gray-500">중개보수 {rate('brokerRate')}</span>
-            <span className="font-semibold text-gray-700">{formatComma(brokerFee)}원</span>
+            <span className="text-gray-500">중개보수 <span className="text-[11px] text-gray-400">{BROKER_RATE}%</span></span>
+            <span className="font-semibold text-gray-700">
+              {formatComma(brokerFee)}원 <span className="text-[11px] font-normal text-gray-400">(부가세 별도)</span>
+            </span>
           </div>
           <div className="flex items-center justify-between text-sm">
-            <span className="flex items-center gap-1.5 text-gray-500">권리금 수수료 {rate('premiumRate')}</span>
-            <span className="font-semibold text-gray-700">{formatComma(premiumFee)}원</span>
+            <span className="text-gray-500">권리금 수수료</span>
+            <span className="font-semibold text-gray-700">
+              {formatComma(premiumFee)}원 <span className="text-[11px] font-normal text-blue-600">{premiumRate}% 적용</span> <span className="text-[11px] font-normal text-gray-400">(부가세 별도)</span>
+            </span>
           </div>
           <div className="flex items-baseline justify-between border-t border-gray-100 pt-1.5">
-            <span className="text-sm font-bold text-gray-800">합계</span>
+            <span className="text-sm font-bold text-gray-800">합계 <span className="text-[11px] font-normal text-gray-400">(부가세 별도)</span></span>
             <span className="text-right">
               <span className="text-lg font-bold text-blue-700">{formatComma(total)}원</span>
-              <span className="block text-[11px] text-gray-400">부가세 포함 {formatComma(totalVat)}원</span>
+              <span className="block text-[11px] text-gray-400">부가세 포함 시 {formatComma(totalVat)}원</span>
             </span>
           </div>
         </div>
+        <p className="mt-1.5 text-right text-[11px] text-gray-400">권리금 수수료율: 1억 미만 5% · 1억~2억 미만 4% · 2억 이상 3%</p>
       </div>
     </div>
   )
