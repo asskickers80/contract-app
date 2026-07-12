@@ -17,18 +17,19 @@ export const POS = {
   agentName:    { x: 0.785, y: 0.1502, size: 9 },
 
   // 제1조 광고조건 표 (7열) — 값 행
-  productPatch: { x: 0.1635, y: 0.2839, size: 7.5, align: 'center', patch: true }, // '광고'가 인쇄돼 있어 다를 때만 덮어씀
+  // patch가 {x0,x1}이면 그 셀 구간을 흰색으로 덮고 쓴다 (인쇄된 기본값/점 제거)
+  productPatch: { x: 0.1635, y: 0.2839, size: 7.5, align: 'center', patch: { x0: 0.093, x1: 0.2265 } }, // '광고' 인쇄됨 — 다를 때만 덮어씀
   fee:          { x: 0.2835, y: 0.2839, size: 7.5, align: 'center' },
   vat:          { x: 0.3865, y: 0.2839, size: 7.5, align: 'center' },
   total:        { x: 0.490,  y: 0.2839, size: 7.5, align: 'center', bold: true },
-  startDate:    { x: 0.6035, y: 0.2839, size: 7.5, align: 'center' },
-  endDate:      { x: 0.730,  y: 0.2839, size: 7.5, align: 'center' },
-  periodPatch:  { x: 0.855,  y: 0.2839, size: 7.5, align: 'center', patch: true }, // '( 3 )개월간' 인쇄됨 — 3개월 아닐 때만 덮어씀
+  startDate:    { x: 0.6035, y: 0.2839, size: 7.5, align: 'center', patch: { x0: 0.557, x1: 0.664 } }, // 인쇄된 ". ." 점 덮기
+  endDate:      { x: 0.730,  y: 0.2839, size: 7.5, align: 'center', patch: { x0: 0.682, x1: 0.7865 } },
+  periodPatch:  { x: 0.855,  y: 0.2839, size: 7.5, align: 'center', patch: { x0: 0.797, x1: 0.908 } }, // '( 3 )개월간' 인쇄됨 — 3개월 아닐 때만 덮어씀
 
-  // 하단 "20  년  월  일" 빈칸
+  // 하단 "20  년  월  일" 빈칸 — 값은 단위 글자(년/월/일) 앞 빈칸에 쓴다
   signYY: { x: 0.702, y: 0.9035, size: 9.5 },          // "20" 뒤 두 자리
-  signMM: { x: 0.828, y: 0.9035, size: 9.5, align: 'center' },
-  signDD: { x: 0.919, y: 0.9035, size: 9.5, align: 'center' },
+  signMM: { x: 0.785, y: 0.9035, size: 9.5, align: 'center' },
+  signDD: { x: 0.848, y: 0.9035, size: 9.5, align: 'center' },
 
   // 광고주 성명
   customerName: { x: 0.235, y: 0.9525, size: 10.5, bold: true },

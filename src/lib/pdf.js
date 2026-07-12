@@ -45,8 +45,13 @@ function buildTextOverlay(contract, signedDate, imgW, imgH) {
     const tw = ctx.measureText(t).width
     if (pos.align === 'center') x -= tw / 2
     if (pos.patch) { // 인쇄된 기존 값을 흰 상자로 덮고 쓴다
-      ctx.fillStyle = 'rgba(255,255,255,0.93)'
-      ctx.fillRect(x - px * 0.3, y - px * 1.1, tw + px * 0.6, px * 1.5)
+      ctx.fillStyle = 'rgba(255,255,255,1)'
+      if (typeof pos.patch === 'object') {
+        // 셀 구간({x0,x1}) 전체를 덮는다 — 인쇄된 기본값·점이 남지 않게
+        ctx.fillRect(pos.patch.x0 * W, y - px * 1.15, (pos.patch.x1 - pos.patch.x0) * W, px * 1.6)
+      } else {
+        ctx.fillRect(x - px * 0.3, y - px * 1.1, tw + px * 0.6, px * 1.5)
+      }
     }
     ctx.fillStyle = INK
     ctx.fillText(t, x, y)
