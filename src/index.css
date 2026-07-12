@@ -4,6 +4,11 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+/* iPad Safari 러버밴드(화면 전체가 딸려 움직임) 방지 */
+html, body {
+  overscroll-behavior: none;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif;
   -webkit-tap-highlight-color: transparent;
