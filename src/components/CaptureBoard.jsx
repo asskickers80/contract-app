@@ -29,7 +29,7 @@ export default function CaptureBoard({ board, onBoardChange }) {
       color: COLORS[ns.length % COLORS.length],
       text: '',
       strokes: [],
-      mode: 'text',
+      mode: 'draw', // 아이패드 펜슬 우선 — 손글씨 모드로 시작
     }])
     setNewNoteId(id)
     setPlacing(false)
@@ -99,7 +99,7 @@ export default function CaptureBoard({ board, onBoardChange }) {
 
       <div
         ref={containerRef}
-        className={`relative min-h-0 flex-1 select-none overflow-hidden rounded-xl border border-gray-200 bg-gray-50 shadow-sm ${placing ? 'cursor-crosshair' : ''}`}
+        className={`relative min-h-0 flex-1 touch-none select-none overflow-hidden rounded-xl border border-gray-200 bg-gray-50 shadow-sm ${placing ? 'cursor-crosshair' : ''}`}
         onClick={placeNote}
         onPointerMove={onDrag}
         onPointerUp={() => { dragRef.current = null; resizeRef.current = null }}
@@ -214,20 +214,20 @@ function PostItNote({ note, defaultExpanded, wasDragged, onUpdate, onDelete, onD
       : (note.text?.slice(0, 18) || '빈 메모')
     return (
       <div
-        className="absolute cursor-pointer rounded px-2 py-1 shadow-md"
+        className="absolute cursor-pointer touch-none rounded-lg px-3 py-2.5 shadow-md"
         style={{
           left: `${note.x * 100}%`, top: `${note.y * 100}%`,
-          backgroundColor: note.color, maxWidth: 120, transform: 'rotate(-0.5deg)',
+          backgroundColor: note.color, maxWidth: 200, transform: 'rotate(-0.5deg)',
         }}
         onPointerDown={onDragStart}
         onClick={() => { if (!wasDragged?.()) setExpanded(true) }}
       >
-        <div className="flex items-center gap-1">
-          <span className="flex-1 truncate text-xs text-gray-700">{preview}</span>
+        <div className="flex items-center gap-2">
+          <span className="flex-1 truncate text-sm font-medium text-gray-700">{preview}</span>
           <button
             onPointerDown={e => e.stopPropagation()}
             onClick={e => { e.stopPropagation(); onDelete() }}
-            className="text-[10px] text-black/30 active:text-black/70"
+            className="-m-2 p-2 text-sm text-black/30 active:text-black/70"
           >✕</button>
         </div>
       </div>
@@ -240,36 +240,44 @@ function PostItNote({ note, defaultExpanded, wasDragged, onUpdate, onDelete, onD
       className="absolute rounded-sm shadow-lg"
       style={{
         left: `${note.x * 100}%`, top: `${note.y * 100}%`,
-        backgroundColor: note.color, width: `${(note.w ?? 0.42) * 100}%`, minWidth: 140,
+        backgroundColor: note.color, width: `${(note.w ?? 0.42) * 100}%`, minWidth: 230,
         transform: 'rotate(-0.5deg)',
       }}
     >
       {/* 헤더 (드래그 영역) */}
       <div
-        className="flex cursor-grab items-center gap-0.5 px-2 pt-1.5 pb-0.5 active:cursor-grabbing"
+        className="flex cursor-grab touch-none items-center gap-1 px-2 pt-1.5 pb-0.5 active:cursor-grabbing"
         onPointerDown={onDragStart}
       >
-        <span className="flex-1 text-[10px] text-black/30">≡</span>
-        {/* 모드 토글: 손글씨 ↔ 텍스트 */}
-        <button
-          onPointerDown={e => e.stopPropagation()}
-          onClick={() => onUpdate({ ...note, mode: note.mode === 'draw' ? 'text' : 'draw' })}
-          title={note.mode === 'draw' ? '키보드 전환' : '손글씨 전환'}
-          className={`rounded px-1.5 py-0.5 text-[11px] font-bold transition-colors ${
-            note.mode === 'draw' ? 'bg-black/10 text-black/70' : 'text-black/30'
-          }`}
-        >
-          {note.mode === 'draw' ? '✏' : 'T'}
-        </button>
+        <span className="flex-1 text-sm text-black/30">≡</span>
+        {/* 모드 선택: 손글씨 / 텍스트 */}
+        <div className="flex overflow-hidden rounded-lg bg-black/5" onPointerDown={e => e.stopPropagation()}>
+          <button
+            onClick={() => onUpdate({ ...note, mode: 'draw' })}
+            title="손글씨"
+            className={`flex h-11 w-11 items-center justify-center text-lg ${
+              note.mode === 'draw' ? 'bg-black/15 text-black/80' : 'text-black/35'
+            }`}
+          >✏</button>
+          <button
+            onClick={() => onUpdate({ ...note, mode: 'text' })}
+            title="키보드 입력"
+            className={`flex h-11 w-11 items-center justify-center text-lg font-bold ${
+              note.mode !== 'draw' ? 'bg-black/15 text-black/80' : 'text-black/35'
+            }`}
+          >T</button>
+        </div>
         <button
           onPointerDown={e => e.stopPropagation()}
           onClick={() => setExpanded(false)}
-          className="px-1 text-[11px] text-black/30 active:text-black/70"
+          title="접기"
+          className="flex h-11 w-11 items-center justify-center rounded-lg text-xl text-black/40 active:bg-black/10 active:text-black/70"
         >−</button>
         <button
           onPointerDown={e => e.stopPropagation()}
           onClick={onDelete}
-          className="px-1 text-[11px] text-black/30 active:text-black/70"
+          title="삭제"
+          className="flex h-11 w-11 items-center justify-center rounded-lg text-lg text-black/40 active:bg-black/10 active:text-black/70"
         >✕</button>
       </div>
 
@@ -289,7 +297,7 @@ function PostItNote({ note, defaultExpanded, wasDragged, onUpdate, onDelete, onD
             <button
               onPointerDown={e => e.stopPropagation()}
               onClick={clearCanvas}
-              className="mt-0.5 text-[10px] text-black/30 active:text-black/60"
+              className="-mx-1.5 mt-0.5 rounded-lg px-3 py-2 text-sm text-black/40 active:bg-black/10 active:text-black/70"
             >
               모두 지우기
             </button>
@@ -301,8 +309,8 @@ function PostItNote({ note, defaultExpanded, wasDragged, onUpdate, onDelete, onD
           defaultValue={note.text}
           onPointerDown={e => e.stopPropagation()}
           onBlur={e => onUpdate({ ...note, text: e.target.value })}
-          style={{ height: note.h ?? 96 }}
-          className="block w-full resize-none bg-transparent px-2 pb-2 text-sm leading-snug text-gray-900 focus:outline-none"
+          style={{ height: note.h ?? 120 }}
+          className="block w-full resize-none bg-transparent px-2 pb-2 text-base leading-snug text-gray-900 focus:outline-none"
           placeholder="메모 입력…"
         />
       )}
@@ -310,8 +318,7 @@ function PostItNote({ note, defaultExpanded, wasDragged, onUpdate, onDelete, onD
       {/* 크기 조절 핸들 */}
       <div
         onPointerDown={onResizeStart}
-        className="absolute -bottom-1 -right-1 flex h-6 w-6 cursor-nwse-resize items-end justify-end rounded-br-sm text-[13px] leading-none text-black/25 active:text-black/60"
-        style={{ touchAction: 'none' }}
+        className="absolute -bottom-2 -right-2 flex h-11 w-11 touch-none cursor-nwse-resize items-end justify-end p-1.5 text-xl leading-none text-black/30 active:text-black/70"
       >◢</div>
     </div>
   )
