@@ -121,7 +121,7 @@ async function prepareInk(dataUrl) {
     }
   }
   if (x1 < x0 || y1 < y0) return null // 빈 캔버스
-  const r = Math.max(1.5, (y1 - y0) * 0.03) // 잉크 크기에 비례한 두께 보강
+  const r = Math.max(1, (y1 - y0) * 0.018) // 잉크 크기에 비례한 두께 보강 (과하지 않게)
   const pad = Math.ceil(r) + 2
   const out = document.createElement('canvas')
   out.width = x1 - x0 + 1 + pad * 2

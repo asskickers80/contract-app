@@ -2,7 +2,7 @@ import { useState } from 'react'
 import CategoryPicker from '../components/CategoryPicker.jsx'
 import { PRODUCTS } from '../data/products.js'
 import { formatBizNo, formatComma, parseAmount, addMonths, formatKoreanDate } from '../lib/format.js'
-import { validateDraft, AGENT_KEY } from '../lib/draft.js'
+import { validateDraft } from '../lib/draft.js'
 import { isSupabaseConfigured } from '../lib/supabase.js'
 
 const PERIOD_OPTIONS = [1, 3, 6, 12]
@@ -63,10 +63,6 @@ export default function ContractForm({ draft, onChange, onGenerate }) {
   }
   function changePeriod(months) {
     set({ periodMonths: months, endDate: draft.startDate ? addMonths(draft.startDate, months) : '' })
-  }
-  function changeAgent(v) {
-    set({ agentName: v })
-    localStorage.setItem(AGENT_KEY, v)
   }
 
   const missing = validateDraft(draft)
@@ -131,7 +127,11 @@ export default function ContractForm({ draft, onChange, onGenerate }) {
 
         <Section title="기본값 (필요 시 수정)">
           <div className="space-y-4">
-            <TextInput label="담당 에이전트" required value={draft.agentName} onChange={changeAgent} placeholder="이름 (한 번 입력하면 저장됩니다)" />
+            {/* 담당 에이전트 고정 — 수정 불가 (2026-07-12 대표님 지시) */}
+            <div className="rounded-xl bg-gray-50 px-3 py-2.5 text-sm text-gray-600">
+              담당 에이전트 <span className="font-bold text-gray-900">{draft.agentName}</span>
+              <span className="ml-1 text-xs text-gray-400">(고정)</span>
+            </div>
             <TextInput label="광고상품명" value={draft.productName} onChange={v => set({ productName: v })} />
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
