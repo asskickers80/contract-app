@@ -82,8 +82,7 @@ function HomeScreen({ onNew, onLibrary }) {
           onClick={() => fileRef.current?.click()}
           className="flex flex-col items-center gap-2 rounded-2xl bg-primary px-6 py-8 text-on-primary shadow-card active:opacity-90"
         >
-          <span className="text-4xl">📷</span>
-          <span className="text-lg font-bold">신규</span>
+          <span className="text-lg font-bold">새 캡처 등록</span>
           <span className="text-xs opacity-80">사진첩에서 이미지를 선택해 새 보드를 만들어요</span>
         </button>
 
@@ -91,7 +90,6 @@ function HomeScreen({ onNew, onLibrary }) {
           onClick={onLibrary}
           className="flex flex-col items-center gap-2 rounded-2xl bg-card px-6 py-8 shadow-card active:opacity-80"
         >
-          <span className="text-4xl">📁</span>
           <span className="text-lg font-bold text-fg">불러오기</span>
           <span className="text-xs text-fg-hint">저장된 캡처 보드를 이어서 편집해요</span>
         </button>
