@@ -23,6 +23,8 @@
   --line-strong: #C4C7C5;
   --warn: #FFE9A3;
   --on-warn: #6F5000;
+  --hilite: #FFDDB8; /* 주황 하이라이트 칩 (입금계좌) */
+  --on-hilite: #7A3E00;
   --ok: #C4EED0;
   --on-ok: #0F5223;
   --danger: #B3261E;
@@ -60,6 +62,8 @@
   --line-strong: #4A4B4E;
   --warn: #3B300F;
   --on-warn: #E2B34C;
+  --hilite: #4A2E12;
+  --on-hilite: #FFB870;
   --ok: #1E3A28;
   --on-ok: #7CD99A;
   --danger: #F2B8B5;
@@ -98,6 +102,8 @@
   --color-line-strong: var(--line-strong);
   --color-warn: var(--warn);
   --color-on-warn: var(--on-warn);
+  --color-hilite: var(--hilite);
+  --color-on-hilite: var(--on-hilite);
   --color-ok: var(--ok);
   --color-on-ok: var(--on-ok);
   --color-danger: var(--danger);
