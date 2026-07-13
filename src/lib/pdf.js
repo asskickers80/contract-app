@@ -26,7 +26,8 @@ const dotDate = iso => {
 }
 
 // 모든 글자 오버레이를 투명 캔버스에 그려 PNG(dataURL)로 반환
-function buildTextOverlay(contract, signedDate, imgW, imgH) {
+// (화면 미리보기(ContractPaper)도 이 함수를 그대로 사용 — PDF와 픽셀 단위 동일 보장)
+export function buildTextOverlay(contract, signedDate, imgW, imgH) {
   const W = Math.round(imgW * OVERLAY_SCALE)
   const H = Math.round(imgH * OVERLAY_SCALE)
   const canvas = document.createElement('canvas')

@@ -98,7 +98,10 @@ export default function Complete({ result, onNewContract }) {
           <p className="text-sm font-extrabold text-fg">광고료 결제</p>
           <div className="mt-2 rounded-xl bg-field px-4 py-3 text-center">
             <p className="text-[11px] text-fg-2">결제할 총액</p>
-            <p className="text-[22px] font-extrabold text-fg">{totalText}<span className="text-[13px] font-semibold">원</span></p>
+            <p className="text-[22px] font-extrabold text-fg">
+              {totalText}<span className="text-[13px] font-semibold">원</span>
+              <span className="ml-1.5 align-middle text-[11px] font-normal text-fg-hint">(부가세 포함)</span>
+            </p>
           </div>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <button onClick={() => handleCopy('amount', String(contract.total))}
@@ -110,13 +113,15 @@ export default function Complete({ result, onNewContract }) {
               {copied === 'reason' ? '✓ 복사됨' : '결제사유(상호) 복사'}
             </button>
           </div>
+          {/* 광고료 입금계좌 (2026-07-13 대표님 지시) */}
+          <div className="mt-2 rounded-full bg-chip px-4 py-2.5 text-center text-[12.5px] font-bold leading-snug text-primary">
+            광고료 입금계좌 : 우리은행 1005-701-333816
+            <span className="block text-[11.5px] font-semibold">예금주 : (주)점포라인</span>
+          </div>
           <button onClick={openPayment}
             className="mt-2 w-full rounded-full bg-cta py-3.5 text-[13px] font-bold text-on-cta active:opacity-90">
             광고료 결제하기 (점포라인 바로결제)
           </button>
-          <p className="mt-2 text-[10.5px] leading-relaxed text-fg-hint">
-            결제 페이지에는 금액이 자동으로 들어가지 않아요. 위 버튼으로 금액과 결제사유를 복사한 뒤, 결제 페이지에서 붙여넣어 주세요.
-          </p>
         </div>
         </div>
 
