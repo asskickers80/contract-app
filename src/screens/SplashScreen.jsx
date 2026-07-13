@@ -38,7 +38,7 @@ export default function SplashScreen({ onDone, duration = 1600 }) {
           style={{ animation: `splashBar ${duration}ms ease-in-out both` }}
         />
       </div>
-      <p className="mt-4 text-xs text-gray-300">점포라인 업무 앱</p>
+      <p className="mt-4 text-xs text-gray-300">업무용 어플리케이션 (임직원용)</p>
     </div>
   )
 }

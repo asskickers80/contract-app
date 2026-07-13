@@ -1,6 +1,6 @@
 {
-  "name": "점포라인 계약서",
-  "short_name": "계약서",
+  "name": "점포라인 업무용 어플리케이션 (임직원용)",
+  "short_name": "점포라인 업무용",
   "description": "점포라인 매물광고 이용계약서 전자서명",
   "start_url": "/app/",
   "display": "standalone",

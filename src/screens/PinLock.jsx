@@ -68,7 +68,7 @@ export default function PinLock({ onUnlock }) {
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-surface px-6">
-      <div className="text-2xl font-extrabold text-fg">점포라인 계약서</div>
+      <div className="text-2xl font-extrabold text-fg">점포라인 업무용 어플리케이션</div>
       <p className="mt-2 text-sm text-fg-2">{title}</p>
 
       <div className={`mt-6 flex gap-4 ${shaking ? 'animate-bounce' : ''}`}>
