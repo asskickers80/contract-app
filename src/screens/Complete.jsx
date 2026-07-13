@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { PAYMENT_URL } from '../data/contract.js'
-import { sharePdf, downloadBlob, copyText } from '../lib/share.js'
+import { sharePdf, downloadBlob } from '../lib/share.js'
 import { saveContract, markPaymentOpened, isSupabaseConfigured } from '../lib/supabase.js'
 
 // 전달·결제 — 저장 상태 표시 + 공유 시트 + 바로결제 (5번 탭에서 사용)
@@ -10,7 +10,6 @@ export default function Complete({ result, onNewContract }) {
   const [saveError, setSaveError] = useState(result.saveError)
   const [saving, setSaving] = useState(false)
   const [shareStatus, setShareStatus] = useState(null) // 'shared' | 'downloaded' | 'cancelled'
-  const [copied, setCopied] = useState(null) // 'amount' | 'reason'
 
   const totalText = Number(contract.total || 0).toLocaleString('ko-KR')
 
@@ -30,13 +29,6 @@ export default function Complete({ result, onNewContract }) {
   async function handleShare() {
     const status = await sharePdf(pdfBlob, fileName)
     if (status !== 'cancelled') setShareStatus(status)
-  }
-
-  async function handleCopy(kind, text) {
-    if (await copyText(text)) {
-      setCopied(kind)
-      setTimeout(() => setCopied(null), 2000)
-    }
   }
 
   function openPayment() {
@@ -103,19 +95,9 @@ export default function Complete({ result, onNewContract }) {
               <span className="ml-1.5 align-middle text-[11px] font-normal text-fg-hint">(부가세 포함)</span>
             </p>
           </div>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <button onClick={() => handleCopy('amount', String(contract.total))}
-              className="rounded-full bg-chip py-3 text-[12.5px] font-bold text-primary active:opacity-80">
-              {copied === 'amount' ? '✓ 복사됨' : '금액 복사'}
-            </button>
-            <button onClick={() => handleCopy('reason', `매물광고료 - ${contract.storeName}`)}
-              className="rounded-full bg-chip py-3 text-[12.5px] font-bold text-primary active:opacity-80">
-              {copied === 'reason' ? '✓ 복사됨' : '결제사유(상호) 복사'}
-            </button>
-          </div>
-          {/* 광고료 입금계좌 (2026-07-13 대표님 지시) */}
-          <div className="mt-2 rounded-full bg-chip px-4 py-2.5 text-center text-[12.5px] font-bold leading-snug text-primary">
-            광고료 입금계좌 : 우리은행 1005-701-333816
+          {/* 입금계좌 — 주황 하이라이트 칩 (2026-07-13 대표님 지시) */}
+          <div className="mt-2 rounded-full bg-hilite px-4 py-2.5 text-center text-[13px] font-bold leading-snug text-on-hilite">
+            입금계좌 : 우리은행 <span className="text-[14px] font-extrabold">1005-701-333816</span>
             <span className="block text-[11.5px] font-semibold">예금주 : (주)점포라인</span>
           </div>
           <button onClick={openPayment}
