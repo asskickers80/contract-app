@@ -82,14 +82,19 @@ function HomeScreen({ onNew, onLibrary }) {
           onClick={() => fileRef.current?.click()}
           className="flex flex-col items-center gap-2 rounded-2xl bg-primary px-6 py-8 text-on-primary shadow-card active:opacity-90"
         >
-          <span className="text-lg font-bold">새 캡처 등록</span>
-          <span className="text-xs opacity-80">사진첩에서 이미지를 선택해 새 보드를 만들어요</span>
+          {/* 사진 추가 아이콘 (Material add_photo_alternate) */}
+          <svg viewBox="0 0 24 24" className="h-10 w-10 fill-current opacity-95" aria-hidden="true">
+            <path d="M21.02 5H19V2.98c0-.54-.44-.98-.98-.98h-.03c-.55 0-.99.44-.99.98V5h-2.01c-.54 0-.98.44-.99.98v.03c0 .55.44.99.99.99H17v2.01c0 .54.44.99.99.98h.03c.54 0 .98-.44.98-.98V7h2.02c.54 0 .98-.44.98-.98v-.04c0-.54-.44-.98-.98-.98zM16 9.01V8h-1.01c-.53 0-1.03-.21-1.41-.58-.37-.38-.58-.88-.58-1.44 0-.36.1-.69.27-.98H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8.28c-.3.17-.64.28-1.02.28-1.09-.01-1.98-.9-1.98-1.99zM15.96 19H6.04c-.41 0-.65-.47-.4-.8l1.98-2.63c.21-.28.62-.26.82.02L10.22 18l2.61-3.48c.2-.26.59-.27.79-.01l2.75 3.69c.25.33.01.8-.41.8z"/>
+          </svg>
+          <span className="text-lg font-extrabold tracking-widest">NEW</span>
+          <span className="text-xs opacity-80">사진첩에서 캡처를 선택해 시작하세요</span>
         </button>
 
         <button
           onClick={onLibrary}
           className="flex flex-col items-center gap-2 rounded-2xl bg-card px-6 py-8 shadow-card active:opacity-80"
         >
+          <span className="text-4xl">📁</span>
           <span className="text-lg font-bold text-fg">불러오기</span>
           <span className="text-xs text-fg-hint">저장된 캡처 보드를 이어서 편집해요</span>
         </button>
