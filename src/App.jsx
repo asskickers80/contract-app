@@ -20,6 +20,13 @@ export default function App() {
   const [activeCardKey, setActiveCardKey] = useState(null)
   const [contractResult, setContractResult] = useState(null)
   const [contractKey, setContractKey] = useState(0)
+  const [openCardReq, setOpenCardReq] = useState(null) // 보관함에서 '열기' 요청
+
+  // 전달·결제 보관함에서 매물 열기 → 매물카드 뷰어로 이동 (모든 탭이 이 카드를 보게 됨)
+  function handleOpenCard(key) {
+    setOpenCardReq({ key, ts: Date.now() })
+    setActive(0)
+  }
 
   useEffect(() => { saveUi('tab', active) }, [active])
   useEffect(() => { initBackGuard() }, [])
@@ -62,13 +69,13 @@ export default function App() {
       <AppTabs active={active} onSelect={setActive} />
       <div className="min-h-0 flex-1">
         <div className={active === 0 ? 'h-full' : 'hidden'}>
-          <ListingTab onActiveCard={setActiveCardKey} active={active === 0} />
+          <ListingTab onActiveCard={setActiveCardKey} active={active === 0} openCardReq={openCardReq} />
         </div>
         {active === 1 && <NoteTab cardKey={activeCardKey} />}
         <div className={active === 2 ? 'h-full' : 'hidden'}>
           <ContractTab key={contractKey} cardKey={activeCardKey} active={active === 2} onComplete={handleContractComplete} />
         </div>
-        {active === 3 && <DeliveryTab result={contractResult} onNewContract={handleNewContract} />}
+        {active === 3 && <DeliveryTab result={contractResult} onNewContract={handleNewContract} onOpenCard={handleOpenCard} />}
         <div className={active === 4 ? 'h-full' : 'hidden'}>
           <AdWorkTab cardKey={activeCardKey} active={active === 4} />
         </div>
