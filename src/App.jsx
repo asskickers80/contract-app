@@ -7,7 +7,7 @@ import NoteTab from './screens/NoteTab.jsx'
 import ContractTab from './screens/ContractTab.jsx'
 import DeliveryTab from './screens/DeliveryTab.jsx'
 import AdWorkTab from './screens/AdWorkTab.jsx'
-import { loadUi, saveUi } from './lib/uiState.js'
+import { loadUi, saveUi, FRESH_LAUNCH } from './lib/uiState.js'
 import { initBackGuard } from './lib/backNav.js'
 
 // [0 매물카드] [1 노트] [2 계약] [3 전달·결제]
@@ -16,7 +16,8 @@ import { initBackGuard } from './lib/backNav.js'
 export default function App() {
   const [splashDone, setSplashDone] = useState(sessionStorage.getItem('contract.splashDone') === '1')
   const [unlocked, setUnlocked] = useState(sessionStorage.getItem('contract.unlocked') === '1')
-  const [active, setActive] = useState(() => loadUi('tab', 0)) // 새로고침해도 보던 탭 유지
+  // 새 실행은 매물카드에서 시작, 사용 중 새로고침만 보던 탭 복원
+  const [active, setActive] = useState(() => (FRESH_LAUNCH ? 0 : loadUi('tab', 0)))
   const [activeCardKey, setActiveCardKey] = useState(null)
   const [contractResult, setContractResult] = useState(null)
   const [contractKey, setContractKey] = useState(0)
