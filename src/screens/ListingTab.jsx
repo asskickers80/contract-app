@@ -38,7 +38,16 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
     setView('viewer')
   }, [openCardReq])
 
-  function openNew(image) {
+  async function openNew(image) {
+    // 같은 캡처 이미지를 다시 열면 새 파일을 만들지 않고 기존 작업을 이어서 연다
+    // → 저장 단위는 "하나의 작업당 하나의 파일"로 유지
+    const existing = await listCardBoards().then(bs => bs.find(x => x.image === image)).catch(() => null)
+    if (existing) {
+      setBoardKey(existing.key)
+      setInitBoard(null)
+      setView('viewer')
+      return
+    }
     const key = newBoardKey()
     const init = { image, notes: [], capturedAt: new Date().toISOString() }
     setBoardKey(key)
