@@ -127,8 +127,10 @@ export default function CaptureBoard({ board, onBoardChange }) {
 // ── 포스트잇 ────────────────────────────────────────────────────
 function PostItNote({ note, defaultExpanded, wasDragged, onUpdate, onDelete, onDragStart, onResizeStart }) {
   const [expanded, setExpanded] = useState(!!defaultExpanded)
+  const [tool, setTool] = useState('pen') // 'pen' | 'eraser' (손글씨 모드 전용)
   const canvasRef = useRef(null)
   const activeStroke = useRef(null)
+  const erasingRef = useRef(false)
 
   // 캔버스 초기화 + 저장된 획 복원
   useEffect(() => {
@@ -163,9 +165,38 @@ function PostItNote({ note, defaultExpanded, wasDragged, onUpdate, onDelete, onD
     ctx.stroke()
   }
 
+  function redrawAll(strokes) {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const rect = canvas.getBoundingClientRect()
+    const ctx = canvas.getContext('2d')
+    ctx.clearRect(0, 0, rect.width, rect.height)
+    strokes.forEach(st => redrawStroke(ctx, st, rect.width, rect.height))
+  }
+
+  // 지우개: 닿은 획을 통째로 지운다
+  function eraseAt(e) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = (e.clientX - rect.left) / rect.width
+    const y = (e.clientY - rect.top) / rect.height
+    const rx = 16 / rect.width
+    const ry = 16 / rect.height
+    const strokes = note.strokes || []
+    const keep = strokes.filter(st => !st.some(pt => Math.abs(pt.x - x) < rx && Math.abs(pt.y - y) < ry))
+    if (keep.length !== strokes.length) {
+      redrawAll(keep)
+      onUpdate({ ...note, strokes: keep })
+    }
+  }
+
   function onCanvasPointerDown(e) {
     e.stopPropagation()
-    e.currentTarget.setPointerCapture(e.pointerId)
+    try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* 합성 이벤트 */ }
+    if (tool === 'eraser') {
+      erasingRef.current = true
+      eraseAt(e)
+      return
+    }
     const rect = e.currentTarget.getBoundingClientRect()
     activeStroke.current = [{
       x: (e.clientX - rect.left) / rect.width,
@@ -175,6 +206,7 @@ function PostItNote({ note, defaultExpanded, wasDragged, onUpdate, onDelete, onD
   }
 
   function onCanvasPointerMove(e) {
+    if (erasingRef.current) { eraseAt(e); return }
     if (!activeStroke.current) return
     const rect = e.currentTarget.getBoundingClientRect()
     const cssX = e.clientX - rect.left
@@ -194,6 +226,7 @@ function PostItNote({ note, defaultExpanded, wasDragged, onUpdate, onDelete, onD
   }
 
   function onCanvasPointerUp() {
+    erasingRef.current = false
     const stroke = activeStroke.current
     activeStroke.current = null
     if (!stroke || stroke.length < 2) return
@@ -253,12 +286,21 @@ function PostItNote({ note, defaultExpanded, wasDragged, onUpdate, onDelete, onD
         {/* 모드 선택: 손글씨 / 텍스트 */}
         <div className="flex overflow-hidden rounded-lg bg-black/5" onPointerDown={e => e.stopPropagation()}>
           <button
-            onClick={() => onUpdate({ ...note, mode: 'draw' })}
+            onClick={() => { onUpdate({ ...note, mode: 'draw' }); setTool('pen') }}
             title="손글씨"
             className={`flex h-11 w-11 items-center justify-center text-lg ${
-              note.mode === 'draw' ? 'bg-black/15 text-black/80' : 'text-black/35'
+              note.mode === 'draw' && tool === 'pen' ? 'bg-black/15 text-black/80' : 'text-black/35'
             }`}
           >✏</button>
+          {note.mode === 'draw' && (
+            <button
+              onClick={() => setTool(t => (t === 'eraser' ? 'pen' : 'eraser'))}
+              title="지우개"
+              className={`flex h-11 items-center justify-center px-2 text-xs font-bold ${
+                tool === 'eraser' ? 'bg-black/15 text-black/80' : 'text-black/35'
+              }`}
+            >지우개</button>
+          )}
           <button
             onClick={() => onUpdate({ ...note, mode: 'text' })}
             title="키보드 입력"
