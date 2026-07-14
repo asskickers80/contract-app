@@ -9,7 +9,7 @@ import { useBackClose } from '../lib/backNav.js'
 const newBoardKey = () => `cap-${Date.now()}`
 
 // ── 메인 ─────────────────────────────────────────────────────
-export default function ListingTab({ onActiveCard, active }) {
+export default function ListingTab({ onActiveCard, active, openCardReq }) {
   // 새로고침해도 보던 화면(라이브러리/캡처 뷰어)으로 복원
   const [view, setView] = useState(() => {
     const s = loadUi('listing')
@@ -29,6 +29,14 @@ export default function ListingTab({ onActiveCard, active }) {
 
   // 뒤로 가기: 뷰어/라이브러리가 열려 있으면 홈으로 (앱 밖으로 나가지 않음)
   useBackClose(active && view !== 'home', goHome)
+
+  // 전달·결제 보관함의 [열기] 요청 — 해당 보드를 뷰어로
+  useEffect(() => {
+    if (!openCardReq?.key) return
+    setBoardKey(openCardReq.key)
+    setInitBoard(null)
+    setView('viewer')
+  }, [openCardReq])
 
   function openNew(image) {
     setBoardKey(newBoardKey())
