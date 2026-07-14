@@ -39,9 +39,13 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
   }, [openCardReq])
 
   function openNew(image) {
-    setBoardKey(newBoardKey())
-    setInitBoard({ image, notes: [], capturedAt: new Date().toISOString() })
+    const key = newBoardKey()
+    const init = { image, notes: [], capturedAt: new Date().toISOString() }
+    setBoardKey(key)
+    setInitBoard(init)
     setView('viewer')
+    // 생성 즉시 저장 — 바로 나가도 작업 보관함에 남도록 (디바운스 안 기다림)
+    saveCardBoard(key, init).catch(() => {})
   }
 
   function openSaved(entry) {
@@ -236,6 +240,13 @@ function CaptureViewer({ boardKey, initBoard, onBack, active }) {
     const t = setTimeout(() => saveCardBoard(boardKey, board).catch(() => {}), 400)
     return () => clearTimeout(t)
   }, [board, boardKey])
+
+  // 뷰어를 떠날 때 마지막 상태를 즉시 저장 — 디바운스 취소로 마지막 변경이 유실되지 않게
+  const boardRef = useRef(board)
+  boardRef.current = board
+  useEffect(() => () => {
+    if (boardRef.current?.image) saveCardBoard(boardKey, boardRef.current).catch(() => {})
+  }, [boardKey])
 
   async function handleSave() {
     if (!board?.image) return
