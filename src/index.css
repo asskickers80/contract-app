@@ -25,6 +25,10 @@
   --on-warn: #6F5000;
   --hilite: #FFDDB8; /* 주황 하이라이트 칩 (입금계좌) */
   --on-hilite: #7A3E00;
+  --opt: #6750A4; /* 보라 — 옵션 성격 탭(매물작업) 전용 */
+  --on-opt: #FFFFFF;
+  --opt-container: #E9DDFF;
+  --on-opt-container: #22005D;
   --ok: #C4EED0;
   --on-ok: #0F5223;
   --danger: #B3261E;
@@ -64,6 +68,10 @@
   --on-warn: #E2B34C;
   --hilite: #4A2E12;
   --on-hilite: #FFB870;
+  --opt: #CFBCFF;
+  --on-opt: #22005D;
+  --opt-container: #4A4458;
+  --on-opt-container: #E8DEF8;
   --ok: #1E3A28;
   --on-ok: #7CD99A;
   --danger: #F2B8B5;
@@ -104,6 +112,10 @@
   --color-on-warn: var(--on-warn);
   --color-hilite: var(--hilite);
   --color-on-hilite: var(--on-hilite);
+  --color-opt: var(--opt);
+  --color-on-opt: var(--on-opt);
+  --color-opt-container: var(--opt-container);
+  --color-on-opt-container: var(--on-opt-container);
   --color-ok: var(--ok);
   --color-on-ok: var(--on-ok);
   --color-danger: var(--danger);

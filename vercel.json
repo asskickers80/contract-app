@@ -10,7 +10,7 @@
   "rewrites": [
     { "source": "/app", "destination": "/app/index.html" },
     { "source": "/app/", "destination": "/app/index.html" },
-    { "source": "/((?!app/?|api/proxy|api/extract).*)", "destination": "/api/proxy?__path=/$1" }
+    { "source": "/((?!app/?|api/proxy|api/extract|api/adwrite).*)", "destination": "/api/proxy?__path=/$1" }
   ],
   "headers": [
     {

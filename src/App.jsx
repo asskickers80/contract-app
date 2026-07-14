@@ -6,6 +6,7 @@ import ListingTab from './screens/ListingTab.jsx'
 import NoteTab from './screens/NoteTab.jsx'
 import ContractTab from './screens/ContractTab.jsx'
 import DeliveryTab from './screens/DeliveryTab.jsx'
+import AdWorkTab from './screens/AdWorkTab.jsx'
 import { loadUi, saveUi } from './lib/uiState.js'
 import { initBackGuard } from './lib/backNav.js'
 
@@ -68,6 +69,9 @@ export default function App() {
           <ContractTab key={contractKey} cardKey={activeCardKey} active={active === 2} onComplete={handleContractComplete} />
         </div>
         {active === 3 && <DeliveryTab result={contractResult} onNewContract={handleNewContract} />}
+        <div className={active === 4 ? 'h-full' : 'hidden'}>
+          <AdWorkTab cardKey={activeCardKey} active={active === 4} />
+        </div>
       </div>
     </div>
   )
