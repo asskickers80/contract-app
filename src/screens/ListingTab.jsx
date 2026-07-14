@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import CaptureBoard from '../components/CaptureBoard.jsx'
 import { loadCardBoard, saveCardBoard, listCardBoards, deleteCardBoard, imageSig } from '../lib/boardStore.js'
 import { formatPhone, formatComma, parseAmount, formatBizNo } from '../lib/format.js'
-import { loadUi, saveUi } from '../lib/uiState.js'
+import { loadUi, saveUi, FRESH_LAUNCH } from '../lib/uiState.js'
 import { useBackClose } from '../lib/backNav.js'
 
 // 보드 저장 키 자동 생성 (폼 제거로 전화번호 키 폐지)
@@ -10,14 +10,15 @@ const newBoardKey = () => `cap-${Date.now()}`
 
 // ── 메인 ─────────────────────────────────────────────────────
 export default function ListingTab({ onActiveCard, active, openCardReq }) {
-  // 새로고침해도 보던 화면(라이브러리/캡처 뷰어)으로 복원
+  // 사용 중 새로고침이면 보던 화면(라이브러리/캡처 뷰어) 복원, 새 실행이면 홈에서 시작
   const [view, setView] = useState(() => {
+    if (FRESH_LAUNCH) return 'home'
     const s = loadUi('listing')
     if (s?.view === 'viewer' && s.boardKey) return 'viewer'
     if (s?.view === 'library') return 'library'
     return 'home' // home | library | viewer
   })
-  const [boardKey, setBoardKey] = useState(() => loadUi('listing')?.boardKey ?? null)
+  const [boardKey, setBoardKey] = useState(() => (FRESH_LAUNCH ? null : loadUi('listing')?.boardKey ?? null))
   const [initBoard, setInitBoard] = useState(null) // 신규 진입 시 초기 보드 (복원 시엔 저장소에서 로드)
 
   useEffect(() => { saveUi('listing', { view, boardKey }) }, [view, boardKey])
