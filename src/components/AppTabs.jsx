@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { getTheme, setTheme } from '../lib/theme.js'
 
-// [매물카드][상담][계약][전달·결제] — 세그먼티드 필 스텝바 (머티리얼 토널)
-// 네 탭 모두 동일 형식. 오른쪽 끝에 다크 모드 토글.
+// [매물카드][상담][계약][전달·결제][매물작업] — 세그먼티드 필 스텝바 (머티리얼 토널)
+// 숫자 없이 굵은 라벨만 (2026-07-14 대표님 지시).
+// 매물작업은 옵션 성격이라 맨 뒤 + 보라색 강조.
 export const APP_TABS = [
   { key: 'listing',  label: '매물카드' },
   { key: 'note',     label: '상담' },
   { key: 'contract', label: '계약' },
   { key: 'delivery', label: '전달·결제' },
+  { key: 'adwork',   label: '매물작업', accent: true },
 ]
 
 function ThemeToggle() {
@@ -44,17 +46,16 @@ export default function AppTabs({ active, onSelect }) {
             <button
               key={tab.key}
               onClick={() => onSelect(i)}
-              className={`flex h-10 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-full px-2 text-sm transition-colors duration-150 ${
+              className={`flex h-10 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-full px-2 text-[15px] transition-colors duration-150 ${
                 active === i
-                  ? 'bg-primary-container font-bold text-on-primary-container'
-                  : 'font-medium text-fg-2 active:bg-chip'
+                  ? tab.accent
+                    ? 'bg-opt-container font-extrabold text-on-opt-container'
+                    : 'bg-primary-container font-extrabold text-on-primary-container'
+                  : tab.accent
+                    ? 'font-bold text-opt active:bg-chip'
+                    : 'font-bold text-fg-2 active:bg-chip'
               }`}
             >
-              <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
-                active === i ? 'bg-primary text-on-primary' : 'bg-chip text-fg-2'
-              }`}>
-                {i + 1}
-              </span>
               {tab.label}
             </button>
           ))}
