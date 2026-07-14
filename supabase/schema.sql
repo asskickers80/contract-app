@@ -44,3 +44,22 @@ create policy "contracts_storage_insert" on storage.objects
   for insert with check (bucket_id = 'contracts');
 create policy "contracts_storage_select" on storage.objects
   for select using (bucket_id = 'contracts');
+
+
+-- ── 작업 보관함(boards) — 캡처 보드 전체(메모·노트·수수료·매물정보·광고) 서버 저장 ──
+-- 2026-07-14 추가: 기기 저장소 유실(홈 화면 앱 재설치 등) 대응
+create table if not exists public.boards (
+  key text primary key,              -- 보드 키 (cap-<timestamp>)
+  store_name text,                   -- 상호 (목록 표시용)
+  captured_at timestamptz,           -- 캡처 시각
+  updated_at timestamptz not null default now(),
+  image text,                        -- 캡처 원본 (dataURL)
+  thumb text,                        -- 목록용 썸네일 (dataURL)
+  image_sig text,                    -- 이미지 지문 (중복 캡처 판정)
+  data jsonb                         -- 보드 전체 (notes/ink/fee/info/ad 등, image 제외)
+);
+
+create index if not exists boards_captured_at_idx on public.boards (captured_at desc);
+
+alter table public.boards enable row level security;
+create policy "boards_all" on public.boards for all using (true) with check (true);

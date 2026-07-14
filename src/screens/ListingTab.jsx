@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import CaptureBoard from '../components/CaptureBoard.jsx'
-import { loadCardBoard, saveCardBoard, listCardBoards, deleteCardBoard } from '../lib/boardStore.js'
+import { loadCardBoard, saveCardBoard, listCardBoards, deleteCardBoard, imageSig } from '../lib/boardStore.js'
 import { formatPhone, formatComma, parseAmount, formatBizNo } from '../lib/format.js'
 import { loadUi, saveUi } from '../lib/uiState.js'
 import { useBackClose } from '../lib/backNav.js'
@@ -41,7 +41,10 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
   async function openNew(image) {
     // 같은 캡처 이미지를 다시 열면 새 파일을 만들지 않고 기존 작업을 이어서 연다
     // → 저장 단위는 "하나의 작업당 하나의 파일"로 유지
-    const existing = await listCardBoards().then(bs => bs.find(x => x.image === image)).catch(() => null)
+    const sig = imageSig(image)
+    const existing = await listCardBoards()
+      .then(bs => bs.find(x => x.image === image || (x.imageSig && x.imageSig === sig)))
+      .catch(() => null)
     if (existing) {
       setBoardKey(existing.key)
       setInitBoard(null)
