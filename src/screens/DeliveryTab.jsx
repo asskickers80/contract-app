@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import Complete from './Complete.jsx'
 import ContractList from './ContractList.jsx'
-import { listCardBoards } from '../lib/boardStore.js'
+import { listCardBoards, deleteCardBoard } from '../lib/boardStore.js'
 import { copyText } from '../lib/share.js'
 
 // [전달·결제] 탭 — 방금 서명 완료된 계약의 공유·바로결제
@@ -48,6 +48,12 @@ function WorkArchive({ onOpenCard }) {
       .finally(() => setLoading(false))
   }, [])
 
+  async function remove(entry) {
+    if (!confirm(`'${entry.info?.storeName || '상호 미확인'}' 작업을 삭제할까요? (캡처·메모·노트·광고가 함께 삭제됩니다)`)) return
+    await deleteCardBoard(entry.key).catch(() => {})
+    setBoards(bs => bs.filter(b => b.key !== entry.key))
+  }
+
   async function copyAd(entry) {
     if (await copyText(entry.ad.generated)) {
       setCopiedKey(entry.key)
@@ -76,7 +82,11 @@ function WorkArchive({ onOpenCard }) {
       )}
 
       {boards.map(entry => (
-        <div key={entry.key} className="flex items-center gap-3 rounded-2xl bg-card p-3 shadow-card">
+        <div key={entry.key} className="relative flex items-center gap-3 rounded-2xl bg-card p-3 shadow-card">
+          <button onClick={() => remove(entry)} aria-label="작업 삭제"
+            className="absolute -right-1.5 -top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-chip text-xs font-bold text-fg-2 shadow-card active:bg-danger-container active:text-on-danger-container">
+            ✕
+          </button>
           <img src={entry.image} alt="" className="h-16 w-24 shrink-0 rounded-lg object-cover" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-extrabold text-fg">
