@@ -147,13 +147,34 @@ export default function InkPad({ initialStrokes, onCommit }) {
     if (undoRef.current.length > 40) undoRef.current.shift()
   }
 
+  // 부분 지우개 — 문지른 부분의 점만 제거하고, 획이 끊기면 남은 구간을 별도 획으로 분할
   function eraseAt(p) {
-    const before = strokesRef.current.length
     const r2 = ERASE_R * ERASE_R
-    strokesRef.current = strokesRef.current.filter(
-      s => !s.points.some(pt => (pt.x - p.x) ** 2 + (pt.y - p.y) ** 2 < r2)
-    )
-    if (strokesRef.current.length !== before) {
+    let changed = false
+    const next = []
+    for (const s of strokesRef.current) {
+      const segs = []
+      let seg = []
+      let hit = false
+      for (const pt of s.points) {
+        if ((pt.x - p.x) ** 2 + (pt.y - p.y) ** 2 < r2) {
+          hit = true
+          if (seg.length) segs.push(seg)
+          seg = []
+        } else {
+          seg.push(pt)
+        }
+      }
+      if (seg.length) segs.push(seg)
+      if (!hit) { next.push(s); continue }
+      changed = true
+      for (const points of segs) {
+        // 분할 후 점 하나만 남은 자투리는 버린다 (점 찍기 획은 원래 1점이므로 그대로 지워짐)
+        if (points.length >= 2) next.push({ ...s, points })
+      }
+    }
+    if (changed) {
+      strokesRef.current = next
       erasedRef.current = true
       redraw()
     }

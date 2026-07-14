@@ -174,18 +174,39 @@ function PostItNote({ note, defaultExpanded, wasDragged, onUpdate, onDelete, onD
     strokes.forEach(st => redrawStroke(ctx, st, rect.width, rect.height))
   }
 
-  // 지우개: 닿은 획을 통째로 지운다
+  // 부분 지우개 — 문지른 부분의 점만 제거하고, 획이 끊기면 남은 구간을 별도 획으로 분할
   function eraseAt(e) {
     const rect = e.currentTarget.getBoundingClientRect()
-    const x = (e.clientX - rect.left) / rect.width
-    const y = (e.clientY - rect.top) / rect.height
-    const rx = 16 / rect.width
-    const ry = 16 / rect.height
-    const strokes = note.strokes || []
-    const keep = strokes.filter(st => !st.some(pt => Math.abs(pt.x - x) < rx && Math.abs(pt.y - y) < ry))
-    if (keep.length !== strokes.length) {
-      redrawAll(keep)
-      onUpdate({ ...note, strokes: keep })
+    const ex = e.clientX - rect.left
+    const ey = e.clientY - rect.top
+    const R2 = 16 * 16
+    let changed = false
+    const next = []
+    for (const st of note.strokes || []) {
+      const segs = []
+      let seg = []
+      let hit = false
+      for (const pt of st) {
+        const dx = pt.x * rect.width - ex
+        const dy = pt.y * rect.height - ey
+        if (dx * dx + dy * dy < R2) {
+          hit = true
+          if (seg.length) segs.push(seg)
+          seg = []
+        } else {
+          seg.push(pt)
+        }
+      }
+      if (seg.length) segs.push(seg)
+      if (!hit) { next.push(st); continue }
+      changed = true
+      for (const pts of segs) {
+        if (pts.length >= 2) next.push(pts)
+      }
+    }
+    if (changed) {
+      redrawAll(next)
+      onUpdate({ ...note, strokes: next })
     }
   }
 
