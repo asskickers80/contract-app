@@ -141,6 +141,10 @@ html, body {
 }
 
 body {
+  /* 업무 앱 — 펜슬+손바닥 동시 터치 시 텍스트 드래그 선택(파란 블록) 방지 */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
   font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   letter-spacing: -0.01em;
   word-break: keep-all;
@@ -153,4 +157,10 @@ body {
 /* iPad 홈 화면 앱(standalone)에서 상단 노치 영역 확보 */
 #root {
   padding-top: env(safe-area-inset-top);
+}
+
+/* 입력창에서는 선택·복사 허용 */
+input, textarea, [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
 }
