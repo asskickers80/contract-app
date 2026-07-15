@@ -11,7 +11,7 @@ const EMPTY_FIELDS = {
   storeName: '', address: '', area: '',
   deposit: null, monthlyRent: null, premium: null, maintenanceFee: null,
   tradeArea: '', franchise: '',
-  revenue: '', strengths: '', notes: '',
+  facility: '', revenue: '', strengths: '', notes: '',
 }
 
 const FIELD_DEFS = [
@@ -24,9 +24,10 @@ const FIELD_DEFS = [
   ['maintenanceFee', '7. 관리비', 'money'],
   ['tradeArea', '8. 상권', 'multi'],
   ['franchise', '9. 프랜차이즈', 'multi'],
-  ['revenue', '10. 매출과 수익', 'multi'],
-  ['strengths', '11. 특장점', 'multi'],
-  ['notes', '12. 특이사항 및 매도사유', 'multi'],
+  ['facility', '10. 시설 상태', 'multi'],
+  ['revenue', '11. 매출과 수익', 'multi'],
+  ['strengths', '12. 특장점', 'multi'],
+  ['notes', '13. 특이사항 및 매도사유', 'multi'],
 ]
 
 // 금액을 프롬프트·광고용 "3,000만원" 표기로
