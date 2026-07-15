@@ -283,9 +283,15 @@ export default function AdWorkTab({ cardKey, active }) {
               </button>
             </div>
             {adText ? (
-              <textarea value={adText}
-                onChange={e => { setAdText(e.target.value); persist(undefined, e.target.value) }}
-                className="mt-3 min-h-0 flex-1 resize-none rounded-xl bg-inset p-4 text-[14px] leading-relaxed text-fg focus:outline-none focus:ring-2 focus:ring-primary" />
+              <>
+                <textarea value={adText}
+                  onChange={e => { setAdText(e.target.value); persist(undefined, e.target.value) }}
+                  className="mt-3 min-h-0 flex-1 resize-none rounded-xl bg-inset p-4 text-[14px] leading-relaxed text-fg focus:outline-none focus:ring-2 focus:ring-primary" />
+                <button onClick={() => setView('write')}
+                  className="mt-3 w-full shrink-0 rounded-full border border-line bg-card py-3 text-[13px] font-bold text-opt active:bg-chip">
+                  ← 광고작성으로 돌아가 수정 (수정 후 다시 [반영하기])
+                </button>
+              </>
             ) : (
               <p className="py-16 text-center text-sm text-fg-hint">
                 아직 작성된 광고가 없어요 — 광고작성에서 [반영하기]를 눌러 주세요
