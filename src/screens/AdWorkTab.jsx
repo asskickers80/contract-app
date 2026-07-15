@@ -100,8 +100,9 @@ export default function AdWorkTab({ cardKey, active }) {
     setTimeout(() => setNotice(null), ms)
   }
 
-  // 8·9번 AI 작성 — 탭을 열었을 때 비어 있으면 자동 1회, 버튼으로 재작성 가능
-  async function fillTradeAndFranchise({ force = false } = {}) {
+  // 8·9번 AI 작성 — 탭을 열었을 때 비어 있으면 자동 1회, 버튼으로 전체/개별 재작성 가능
+  // only: 'tradeArea' | 'franchise' 를 주면 그 항목만 새 결과로 교체한다
+  async function fillTradeAndFranchise({ force = false, only = null } = {}) {
     if (busy) return
     if (!force && fields.tradeArea.trim() && fields.franchise.trim()) return
     setBusy('fill')
@@ -123,11 +124,11 @@ export default function AdWorkTab({ cardKey, active }) {
       const data = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`)
       setFields(prev => {
-        const next = {
-          ...prev,
-          tradeArea: force || !prev.tradeArea.trim() ? (data.fields?.tradeArea || prev.tradeArea) : prev.tradeArea,
-          franchise: force || !prev.franchise.trim() ? (data.fields?.franchise || prev.franchise) : prev.franchise,
-        }
+        const apply = key =>
+          (!only || only === key) && (force || !prev[key].trim())
+            ? (data.fields?.[key] || prev[key])
+            : prev[key]
+        const next = { ...prev, tradeArea: apply('tradeArea'), franchise: apply('franchise') }
         persist(next)
         return next
       })
@@ -234,10 +235,19 @@ export default function AdWorkTab({ cardKey, active }) {
               <div className="space-y-3.5">
                 {FIELD_DEFS.map(([key, label, type]) => (
                   <label key={key} className="block">
-                    <span className="text-xs font-medium text-fg-2">
+                    <span className="flex items-center text-xs font-medium text-fg-2">
                       {label}
                       {(key === 'tradeArea' || key === 'franchise') && (
-                        <span className="ml-1.5 rounded-full bg-opt-container px-2 py-0.5 text-[10px] font-bold text-on-opt-container">AI 자동작성</span>
+                        <>
+                          <span className="ml-1.5 rounded-full bg-opt-container px-2 py-0.5 text-[10px] font-bold text-on-opt-container">AI 자동작성</span>
+                          <span className="flex-1" />
+                          <button type="button"
+                            onClick={() => fillTradeAndFranchise({ force: true, only: key })}
+                            disabled={!!busy}
+                            className="rounded-full bg-chip px-3 py-1.5 text-[11px] font-bold text-opt active:opacity-80 disabled:opacity-40">
+                            {busy === 'fill' ? '작성 중…' : '↺ AI 다시 작성'}
+                          </button>
+                        </>
                       )}
                     </span>
                     {type === 'text' && (
