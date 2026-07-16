@@ -142,6 +142,8 @@ function HomeScreen({ onNew, onLibrary }) {
 function LibraryScreen({ onOpen, onBack }) {
   const [captures, setCaptures] = useState([])
   const [loading, setLoading] = useState(true)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selected, setSelected] = useState(() => new Set())
 
   useEffect(() => {
     listCardBoards()
@@ -150,11 +152,39 @@ function LibraryScreen({ onOpen, onBack }) {
       .finally(() => setLoading(false))
   }, [])
 
+  // 저장 파일 이름 = 매물상호 (추출 전이면 상호 미확인)
+  function entryName(entry) {
+    if (entry.info?.storeName) return entry.info.storeName
+    return String(entry.key).startsWith('cap-') ? '상호 미확인' : formatPhone(entry.key)
+  }
+
   async function handleDelete(e, entry) {
     e.stopPropagation()
-    if (!confirm('이 캡처 보드를 삭제할까요?')) return
+    if (!confirm(`'${entryName(entry)}' 보드를 삭제할까요?`)) return
     await deleteCardBoard(entry.key).catch(() => {})
     setCaptures(cs => cs.filter(c => c.key !== entry.key))
+  }
+
+  function toggleSelect(key) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  function exitSelect() {
+    setSelectMode(false)
+    setSelected(new Set())
+  }
+
+  async function deleteSelected() {
+    if (selected.size === 0) return
+    if (!confirm(`선택한 ${selected.size}개 보드를 삭제할까요?`)) return
+    for (const key of selected) await deleteCardBoard(key).catch(() => {})
+    setCaptures(cs => cs.filter(c => !selected.has(c.key)))
+    exitSelect()
   }
 
   return (
@@ -162,6 +192,28 @@ function LibraryScreen({ onOpen, onBack }) {
       <div className="flex items-center gap-2 px-5 py-3">
         <button onClick={onBack} className="rounded-full px-3 py-1.5 text-[13.5px] font-semibold text-fg-2 active:bg-chip">← 뒤로</button>
         <span className="text-base font-extrabold text-fg">불러오기</span>
+        <div className="ml-auto flex items-center gap-1.5">
+          {selectMode ? (
+            <>
+              <button onClick={() => setSelected(selected.size === captures.length ? new Set() : new Set(captures.map(c => c.key)))}
+                className="rounded-full bg-chip px-3 py-1.5 text-xs font-bold text-fg-2 active:opacity-80">
+                {selected.size === captures.length ? '전체 해제' : '전체 선택'}
+              </button>
+              <button onClick={deleteSelected} disabled={selected.size === 0}
+                className="rounded-full bg-danger-container px-3 py-1.5 text-xs font-bold text-on-danger-container active:opacity-80 disabled:opacity-40">
+                삭제 ({selected.size})
+              </button>
+              <button onClick={exitSelect} className="rounded-full bg-chip px-3 py-1.5 text-xs font-bold text-fg-2 active:opacity-80">취소</button>
+            </>
+          ) : (
+            captures.length > 0 && (
+              <button onClick={() => setSelectMode(true)}
+                className="rounded-full bg-chip px-3.5 py-1.5 text-xs font-bold text-fg-2 active:opacity-80">
+                선택
+              </button>
+            )
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto pb-6">
@@ -172,21 +224,31 @@ function LibraryScreen({ onOpen, onBack }) {
             {captures.length === 0 && <p className="py-10 text-center text-sm text-fg-hint">저장된 캡처 보드가 없어요</p>}
             <div className="grid grid-cols-2 gap-3">
               {captures.map(entry => (
-                <div key={entry.key} onClick={() => onOpen(entry)}
-                  className="relative cursor-pointer overflow-hidden rounded-xl bg-card shadow-card active:opacity-80">
+                <div key={entry.key} onClick={() => (selectMode ? toggleSelect(entry.key) : onOpen(entry))}
+                  className={`relative cursor-pointer overflow-hidden rounded-xl bg-card shadow-card active:opacity-80 ${
+                    selectMode && selected.has(entry.key) ? 'ring-2 ring-primary' : ''
+                  }`}>
                   <img src={entry.image} alt="" className="aspect-[4/3] w-full object-cover" />
                   <div className="p-2 text-left">
-                    <p className="text-xs font-semibold text-fg-2">
-                      {String(entry.key).startsWith('cap-') ? '캡처 보드' : formatPhone(entry.key)}
+                    <p className="truncate text-xs font-extrabold text-fg">
+                      {entryName(entry)}
                     </p>
                     <p className="text-[11px] text-fg-hint">
                       {entry.capturedAt ? new Date(entry.capturedAt).toLocaleString('ko-KR') : ''}
                     </p>
                   </div>
-                  <button
-                    onClick={e => handleDelete(e, entry)}
-                    className="absolute right-1.5 top-1.5 rounded-full bg-black/40 px-2 py-0.5 text-[11px] text-white active:bg-black/60"
-                  >✕</button>
+                  {selectMode ? (
+                    <span className={`absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full text-[13px] font-bold ${
+                      selected.has(entry.key) ? 'bg-primary text-on-primary' : 'bg-black/40 text-white'
+                    }`}>
+                      {selected.has(entry.key) ? '✓' : ''}
+                    </span>
+                  ) : (
+                    <button
+                      onClick={e => handleDelete(e, entry)}
+                      className="absolute right-1.5 top-1.5 rounded-full bg-black/40 px-2 py-0.5 text-[11px] text-white active:bg-black/60"
+                    >✕</button>
+                  )}
                 </div>
               ))}
             </div>
