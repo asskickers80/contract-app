@@ -40,6 +40,8 @@ function WorkArchive({ onOpenCard }) {
   const [boards, setBoards] = useState([])
   const [loading, setLoading] = useState(true)
   const [copiedKey, setCopiedKey] = useState(null)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selected, setSelected] = useState(() => new Set())
 
   useEffect(() => {
     listCardBoards()
@@ -52,6 +54,28 @@ function WorkArchive({ onOpenCard }) {
     if (!confirm(`'${entry.info?.storeName || '상호 미확인'}' 작업을 삭제할까요? (캡처·메모·노트·광고가 함께 삭제됩니다)`)) return
     await deleteCardBoard(entry.key).catch(() => {})
     setBoards(bs => bs.filter(b => b.key !== entry.key))
+  }
+
+  function toggleSelect(key) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  function exitSelect() {
+    setSelectMode(false)
+    setSelected(new Set())
+  }
+
+  async function deleteSelected() {
+    if (selected.size === 0) return
+    if (!confirm(`선택한 ${selected.size}개 작업을 삭제할까요? (캡처·메모·노트·광고가 함께 삭제됩니다)`)) return
+    for (const key of selected) await deleteCardBoard(key).catch(() => {})
+    setBoards(bs => bs.filter(b => !selected.has(b.key)))
+    exitSelect()
   }
 
   async function copyAd(entry) {
@@ -81,12 +105,47 @@ function WorkArchive({ onOpenCard }) {
         </p>
       )}
 
+      {!loading && boards.length > 0 && (
+        <div className="flex items-center justify-end gap-1.5">
+          {selectMode ? (
+            <>
+              <button onClick={() => setSelected(selected.size === boards.length ? new Set() : new Set(boards.map(b => b.key)))}
+                className="rounded-full bg-chip px-3 py-1.5 text-xs font-bold text-fg-2 active:opacity-80">
+                {selected.size === boards.length ? '전체 해제' : '전체 선택'}
+              </button>
+              <button onClick={deleteSelected} disabled={selected.size === 0}
+                className="rounded-full bg-danger-container px-3 py-1.5 text-xs font-bold text-on-danger-container active:opacity-80 disabled:opacity-40">
+                선택 삭제 ({selected.size})
+              </button>
+              <button onClick={exitSelect} className="rounded-full bg-chip px-3 py-1.5 text-xs font-bold text-fg-2 active:opacity-80">취소</button>
+            </>
+          ) : (
+            <button onClick={() => setSelectMode(true)}
+              className="rounded-full bg-chip px-3.5 py-1.5 text-xs font-bold text-fg-2 active:opacity-80">
+              선택
+            </button>
+          )}
+        </div>
+      )}
+
       {boards.map(entry => (
-        <div key={entry.key} className="relative flex items-center gap-3 rounded-2xl bg-card p-3 shadow-card">
-          <button onClick={() => remove(entry)} aria-label="작업 삭제"
-            className="absolute -right-1.5 -top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-chip text-xs font-bold text-fg-2 shadow-card active:bg-danger-container active:text-on-danger-container">
-            ✕
-          </button>
+        <div key={entry.key}
+          onClick={selectMode ? () => toggleSelect(entry.key) : undefined}
+          className={`relative flex items-center gap-3 rounded-2xl bg-card p-3 shadow-card ${
+            selectMode ? 'cursor-pointer' : ''
+          } ${selectMode && selected.has(entry.key) ? 'ring-2 ring-primary' : ''}`}>
+          {selectMode ? (
+            <span className={`absolute -right-1.5 -top-1.5 flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold shadow-card ${
+              selected.has(entry.key) ? 'bg-primary text-on-primary' : 'bg-chip text-fg-hint'
+            }`}>
+              {selected.has(entry.key) ? '✓' : ''}
+            </span>
+          ) : (
+            <button onClick={() => remove(entry)} aria-label="작업 삭제"
+              className="absolute -right-1.5 -top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-chip text-xs font-bold text-fg-2 shadow-card active:bg-danger-container active:text-on-danger-container">
+              ✕
+            </button>
+          )}
           <img src={entry.image} alt="" className="h-16 w-24 shrink-0 rounded-lg object-cover" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-extrabold text-fg">
@@ -105,18 +164,20 @@ function WorkArchive({ onOpenCard }) {
               ))}
             </div>
           </div>
-          <div className="flex shrink-0 flex-col gap-1.5">
-            <button onClick={() => onOpenCard?.(entry.key)}
-              className="rounded-full bg-primary px-4 py-2 text-xs font-bold text-on-primary active:opacity-90">
-              열기
-            </button>
-            {entry.ad?.generated && (
-              <button onClick={() => copyAd(entry)}
-                className="rounded-full bg-opt-container px-4 py-2 text-xs font-bold text-on-opt-container active:opacity-80">
-                {copiedKey === entry.key ? '✓ 복사됨' : '광고 복사'}
+          {!selectMode && (
+            <div className="flex shrink-0 flex-col gap-1.5">
+              <button onClick={() => onOpenCard?.(entry.key)}
+                className="rounded-full bg-primary px-4 py-2 text-xs font-bold text-on-primary active:opacity-90">
+                열기
               </button>
-            )}
-          </div>
+              {entry.ad?.generated && (
+                <button onClick={() => copyAd(entry)}
+                  className="rounded-full bg-opt-container px-4 py-2 text-xs font-bold text-on-opt-container active:opacity-80">
+                  {copiedKey === entry.key ? '✓ 복사됨' : '광고 복사'}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       ))}
     </div>
