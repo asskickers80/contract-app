@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import Complete from './Complete.jsx'
 import ContractList from './ContractList.jsx'
-import { listCardBoards, deleteCardBoard } from '../lib/boardStore.js'
+import { listCardBoards, deleteCardBoard, patchCardBoard } from '../lib/boardStore.js'
 import { copyText } from '../lib/share.js'
 
 // [전달·결제] 탭 — 방금 서명 완료된 계약의 공유·바로결제
@@ -50,10 +50,22 @@ function WorkArchive({ onOpenCard }) {
       .finally(() => setLoading(false))
   }, [])
 
+  // 파일 이름 = 직접 지은 이름 > 매물상호
+  const entryName = entry => entry.title || entry.info?.storeName || '상호 미확인'
+
   async function remove(entry) {
-    if (!confirm(`'${entry.info?.storeName || '상호 미확인'}' 작업을 삭제할까요? (캡처·메모·노트·광고가 함께 삭제됩니다)`)) return
+    if (!confirm(`'${entryName(entry)}' 작업을 삭제할까요? (캡처·메모·노트·광고가 함께 삭제됩니다)`)) return
     await deleteCardBoard(entry.key).catch(() => {})
     setBoards(bs => bs.filter(b => b.key !== entry.key))
+  }
+
+  // 이름 직접 지정 — 상호가 안 읽힌 옛 보드 정리용
+  function rename(entry) {
+    const name = prompt('파일 이름 (매물상호)', entryName(entry) === '상호 미확인' ? '' : entryName(entry))
+    if (name === null) return
+    const title = name.trim() || null
+    patchCardBoard(entry.key, { title }).catch(() => {})
+    setBoards(bs => bs.map(b => (b.key === entry.key ? { ...b, title } : b)))
   }
 
   function toggleSelect(key) {
@@ -148,8 +160,14 @@ function WorkArchive({ onOpenCard }) {
           )}
           <img src={entry.image} alt="" className="h-16 w-24 shrink-0 rounded-lg object-cover" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-extrabold text-fg">
-              {entry.info?.storeName || '상호 미확인'}
+            <p className="flex items-center gap-1.5 text-sm font-extrabold text-fg">
+              <span className="truncate">{entryName(entry)}</span>
+              {!selectMode && (
+                <button onClick={() => rename(entry)} aria-label="이름 변경"
+                  className="shrink-0 rounded-full bg-chip px-2 py-0.5 text-[10px] font-bold text-fg-2 active:opacity-80">
+                  ✎ 이름
+                </button>
+              )}
             </p>
             <p className="mt-0.5 truncate text-[11px] text-fg-hint">
               {entry.capturedAt ? new Date(entry.capturedAt).toLocaleString('ko-KR') : ''}

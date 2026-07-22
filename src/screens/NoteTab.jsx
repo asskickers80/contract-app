@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import InkPad from '../components/InkPad.jsx'
-import { loadCardBoard, saveCardBoard } from '../lib/boardStore.js'
+import { loadCardBoard, patchCardBoard } from '../lib/boardStore.js'
 import { formatComma, parseAmount } from '../lib/format.js'
 
 // 요율 고정 규칙
@@ -58,13 +58,12 @@ export default function NoteTab({ cardKey }) {
     localStorage.setItem('contract.noteMode', next)
   }
 
-  // 손글씨 저장 (디바운스)
+  // 손글씨 저장 (디바운스) — 자기 필드만 부분 저장 (다른 탭 작업을 덮어쓰지 않음)
   function handleInkCommit(strokes) {
     if (!cardKey) return
     clearTimeout(inkTimer.current)
-    inkTimer.current = setTimeout(async () => {
-      const board = await loadCardBoard(cardKey).catch(() => null)
-      await saveCardBoard(cardKey, { ...(board || {}), ink: { strokes } })
+    inkTimer.current = setTimeout(() => {
+      patchCardBoard(cardKey, { ink: { strokes } }).catch(() => {})
     }, 500)
   }
 
@@ -73,9 +72,8 @@ export default function NoteTab({ cardKey }) {
     setNote(val)
     if (!cardKey) return
     clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(async () => {
-      const board = await loadCardBoard(cardKey).catch(() => null)
-      await saveCardBoard(cardKey, { ...(board || {}), note: val })
+    saveTimer.current = setTimeout(() => {
+      patchCardBoard(cardKey, { note: val }).catch(() => {})
     }, 500)
   }
 
@@ -84,9 +82,8 @@ export default function NoteTab({ cardKey }) {
     setFee(next)
     if (!cardKey) return
     clearTimeout(feeTimer.current)
-    feeTimer.current = setTimeout(async () => {
-      const board = await loadCardBoard(cardKey).catch(() => null)
-      await saveCardBoard(cardKey, { ...(board || {}), fee: next })
+    feeTimer.current = setTimeout(() => {
+      patchCardBoard(cardKey, { fee: next }).catch(() => {})
     }, 500)
   }
 
