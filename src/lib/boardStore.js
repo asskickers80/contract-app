@@ -81,9 +81,9 @@ async function pushRemote(cardKey, board) {
     const sig = imageSig(board.image)
     const row = {
       key,
-      store_name: board.info?.storeName || null,
+      store_name: board.title || board.info?.storeName || null,
       captured_at: board.capturedAt || null,
-      updated_at: new Date().toISOString(),
+      updated_at: board.updatedAt || new Date().toISOString(),
       image_sig: sig,
       data: { ...board, image: null }, // 원본 이미지는 별도 컬럼 — 변경 시에만 전송
     }
@@ -146,27 +146,52 @@ function rowToBoard(r, { thumbAsImage = false } = {}) {
 
 // ── 공개 API (기존 시그니처 유지) ────────────────────────────
 
-// 저장: 기기 즉시 + 서버 디바운스
+// 저장: 기기 즉시 + 서버 디바운스. 저장 시각을 찍어 두어 서버·기기 중 최신본을 가릴 수 있게 한다.
 export function saveCardBoard(cardKey, board) {
-  schedulePush(cardKey, board)
-  return put(CARD_STORE, cardKey, board)
+  const stamped = { ...board, updatedAt: new Date().toISOString() }
+  schedulePush(cardKey, stamped)
+  return put(CARD_STORE, cardKey, stamped)
 }
 
-// 열기: 서버 우선(기기 교체·재설치 대응), 실패 시 기기 캐시
+// 부분 저장: 화면마다 자기 필드만 갱신 (뷰어=캡처·포스트잇·정보, 상담=노트·수수료, 매물작업=광고)
+// → 한 화면이 보드 전체를 통째로 저장해 다른 화면의 작업을 옛 상태로 덮어쓰는 사고를 막는다.
+// 기기 캐시가 항상 최신(모든 저장이 즉시 기록됨)이므로 기기에서 읽어 병합한다.
+const patchChain = new Map()
+export function patchCardBoard(cardKey, patch) {
+  const key = String(cardKey)
+  const prev = patchChain.get(key) || Promise.resolve()
+  const next = prev.then(async () => {
+    const cur = await get(CARD_STORE, cardKey).catch(() => null)
+    // 보드가 없으면(삭제됨 등) 부분 저장으로 되살리지 않는다
+    if (!cur && !patch.image) return
+    return saveCardBoard(cardKey, { ...(cur || {}), ...patch })
+  })
+  patchChain.set(key, next.catch(() => {}))
+  return next
+}
+
+// 열기: 서버·기기 중 최신본 사용. 서버 전송은 1.5초 디바운스라 방금 저장한 작업은
+// 기기 쪽이 더 새것일 수 있다 — 그때 서버(옛것)로 기기를 덮으면 작업이 사라진다.
 export async function loadCardBoard(cardKey) {
+  const key = String(cardKey)
+  const local = await get(CARD_STORE, cardKey).catch(() => null)
+  // 서버로 보내는 중인 저장이 있으면 기기 쪽이 확실히 최신
+  if (pendingBoards.has(key)) return local
   if (isSupabaseConfigured) {
     try {
       const { data, error } = await supabase
-        .from('boards').select('*').eq('key', String(cardKey)).maybeSingle()
+        .from('boards').select('*').eq('key', key).maybeSingle()
       if (!error && data) {
         const board = rowToBoard(data)
-        pushedSig.set(String(cardKey), board.imageSig || imageSig(board.image))
+        const remoteAt = board.updatedAt || data.updated_at || ''
+        if (local?.updatedAt && remoteAt && local.updatedAt > remoteAt) return local
+        pushedSig.set(key, board.imageSig || imageSig(board.image))
         put(CARD_STORE, cardKey, board).catch(() => {}) // 기기 캐시 갱신
         return board
       }
     } catch { /* 원격 실패 → 기기 캐시로 */ }
   }
-  return get(CARD_STORE, cardKey)
+  return local
 }
 
 function listLocalBoards() {

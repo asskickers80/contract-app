@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { loadCardBoard, saveCardBoard } from '../lib/boardStore.js'
+import { loadCardBoard, patchCardBoard } from '../lib/boardStore.js'
 import { formatComma, parseAmount } from '../lib/format.js'
 
 // [매물작업] 탭 — 광고작성(12항목 입력) ↔ 작성완료(AI가 쓴 매물광고)
@@ -79,10 +79,9 @@ export default function AdWorkTab({ cardKey, active }) {
   // 자동 저장 (디바운스)
   function persist(nextFields, nextAd) {
     clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(async () => {
-      const board = await loadCardBoard(cardKey).catch(() => null)
-      await saveCardBoard(cardKey, {
-        ...(board || {}),
+    saveTimer.current = setTimeout(() => {
+      // 자기 필드(광고)만 부분 저장 — 다른 탭 작업을 덮어쓰지 않음
+      patchCardBoard(cardKey, {
         ad: { fields: nextFields ?? fields, generated: nextAd ?? adText },
       }).catch(() => {})
     }, 500)

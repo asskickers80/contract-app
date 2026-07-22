@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import CaptureBoard from '../components/CaptureBoard.jsx'
-import { loadCardBoard, saveCardBoard, listCardBoards, deleteCardBoard, imageSig } from '../lib/boardStore.js'
+import { loadCardBoard, saveCardBoard, patchCardBoard, listCardBoards, deleteCardBoard, imageSig } from '../lib/boardStore.js'
 import { formatPhone, formatComma, parseAmount, formatBizNo } from '../lib/format.js'
 import { loadUi, saveUi, FRESH_LAUNCH } from '../lib/uiState.js'
 import { useBackClose } from '../lib/backNav.js'
@@ -20,22 +20,25 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
   })
   const [boardKey, setBoardKey] = useState(() => (FRESH_LAUNCH ? null : loadUi('listing')?.boardKey ?? null))
   const [initBoard, setInitBoard] = useState(null) // 신규 진입 시 초기 보드 (복원 시엔 저장소에서 로드)
+  // 뷰어를 어디서 열었는지 — 목록(불러오기)에서 열었으면 뒤로 갈 때 다시 목록으로
+  const [backTo, setBackTo] = useState(() => (FRESH_LAUNCH ? 'home' : loadUi('listing')?.backTo ?? 'home'))
 
-  useEffect(() => { saveUi('listing', { view, boardKey }) }, [view, boardKey])
+  useEffect(() => { saveUi('listing', { view, boardKey, backTo }) }, [view, boardKey, backTo])
 
   // 노트 탭에 현재 보드 키 전달
   useEffect(() => {
     onActiveCard?.(view === 'viewer' ? boardKey : null)
   }, [view, boardKey])
 
-  // 뒤로 가기: 뷰어/라이브러리가 열려 있으면 홈으로 (앱 밖으로 나가지 않음)
-  useBackClose(active && view !== 'home', goHome)
+  // 뒤로 가기: 뷰어는 열었던 곳(목록/홈)으로, 라이브러리는 홈으로 (앱 밖으로 나가지 않음)
+  useBackClose(active && view !== 'home', () => (view === 'viewer' ? closeViewer() : goHome()))
 
-  // 전달·결제 보관함의 [열기] 요청 — 해당 보드를 뷰어로
+  // 전달·결제 보관함의 [열기] 요청 — 해당 보드를 뷰어로 (뒤로 가면 파일 목록으로)
   useEffect(() => {
     if (!openCardReq?.key) return
     setBoardKey(openCardReq.key)
     setInitBoard(null)
+    setBackTo('library')
     setView('viewer')
   }, [openCardReq])
 
@@ -49,6 +52,7 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
     if (existing) {
       setBoardKey(existing.key)
       setInitBoard(null)
+      setBackTo('home')
       setView('viewer')
       return
     }
@@ -56,6 +60,7 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
     const init = { image, notes: [], capturedAt: new Date().toISOString() }
     setBoardKey(key)
     setInitBoard(init)
+    setBackTo('home')
     setView('viewer')
     // 생성 즉시 저장 — 바로 나가도 작업 보관함에 남도록 (디바운스 안 기다림)
     saveCardBoard(key, init).catch(() => {})
@@ -64,6 +69,7 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
   function openSaved(entry) {
     setBoardKey(entry.key)
     setInitBoard(null)
+    setBackTo('library')
     setView('viewer')
   }
 
@@ -73,8 +79,15 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
     setInitBoard(null)
   }
 
+  // 뷰어 닫기 — 불러오기·보관함에서 연 카드면 파일 목록으로 되돌아간다 (잘못 연 파일 다시 고르기)
+  function closeViewer() {
+    setBoardKey(null)
+    setInitBoard(null)
+    setView(backTo === 'library' ? 'library' : 'home')
+  }
+
   if (view === 'viewer' && boardKey) {
-    return <CaptureViewer boardKey={boardKey} initBoard={initBoard} onBack={goHome} active={active} />
+    return <CaptureViewer boardKey={boardKey} initBoard={initBoard} onBack={closeViewer} active={active} />
   }
 
   if (view === 'library') {
@@ -152,8 +165,9 @@ function LibraryScreen({ onOpen, onBack }) {
       .finally(() => setLoading(false))
   }, [])
 
-  // 저장 파일 이름 = 매물상호 (추출 전이면 상호 미확인)
+  // 저장 파일 이름 = 직접 지은 이름 > 매물상호 (추출 전이면 상호 미확인)
   function entryName(entry) {
+    if (entry.title) return entry.title
     if (entry.info?.storeName) return entry.info.storeName
     return String(entry.key).startsWith('cap-') ? '상호 미확인' : formatPhone(entry.key)
   }
@@ -163,6 +177,16 @@ function LibraryScreen({ onOpen, onBack }) {
     if (!confirm(`'${entryName(entry)}' 보드를 삭제할까요?`)) return
     await deleteCardBoard(entry.key).catch(() => {})
     setCaptures(cs => cs.filter(c => c.key !== entry.key))
+  }
+
+  // 파일 이름 직접 지정 — 상호가 안 읽힌 옛 보드에 이름을 붙일 수 있게
+  function handleRename(e, entry) {
+    e.stopPropagation()
+    const name = prompt('파일 이름 (매물상호)', entryName(entry) === '상호 미확인' ? '' : entryName(entry))
+    if (name === null) return
+    const title = name.trim() || null
+    patchCardBoard(entry.key, { title }).catch(() => {})
+    setCaptures(cs => cs.map(c => (c.key === entry.key ? { ...c, title } : c)))
   }
 
   function toggleSelect(key) {
@@ -244,10 +268,17 @@ function LibraryScreen({ onOpen, onBack }) {
                       {selected.has(entry.key) ? '✓' : ''}
                     </span>
                   ) : (
-                    <button
-                      onClick={e => handleDelete(e, entry)}
-                      className="absolute right-1.5 top-1.5 rounded-full bg-black/40 px-2 py-0.5 text-[11px] text-white active:bg-black/60"
-                    >✕</button>
+                    <>
+                      <button
+                        onClick={e => handleRename(e, entry)}
+                        aria-label="이름 변경"
+                        className="absolute left-1.5 top-1.5 rounded-full bg-black/40 px-2 py-0.5 text-[11px] text-white active:bg-black/60"
+                      >✎ 이름</button>
+                      <button
+                        onClick={e => handleDelete(e, entry)}
+                        className="absolute right-1.5 top-1.5 rounded-full bg-black/40 px-2 py-0.5 text-[11px] text-white active:bg-black/60"
+                      >✕</button>
+                    </>
                   )}
                 </div>
               ))}
@@ -289,12 +320,13 @@ function CaptureViewer({ boardKey, initBoard, onBack, active }) {
   useBackClose(active && !!infoDraft, () => setInfoDraft(null))
 
   // 캡처를 열면 자동으로 추출 시작 — 정보가 없는 새 캡처, 또는 이미지를 교체했을 때
+  // 상호가 비어 있는 옛 보드도 열면 재추출해 파일 이름(매물상호)을 채운다
   useEffect(() => {
     const img = board?.image
     if (!img || extracting) return
     if (extractedImageRef.current === img) return
-    if (board.info && extractedImageRef.current === null) {
-      extractedImageRef.current = img // 이미 저장된 정보가 있는 보드 — 재추출하지 않음
+    if (board.info?.storeName && extractedImageRef.current === null) {
+      extractedImageRef.current = img // 상호까지 저장된 보드 — 재추출하지 않음
       return
     }
     extractedImageRef.current = img
@@ -309,10 +341,14 @@ function CaptureViewer({ boardKey, initBoard, onBack, active }) {
       .catch(() => setBoard({ image: null, notes: [] }))
   }, [boardKey])
 
-  // 자동 저장 (디바운스)
+  // 뷰어가 소유한 필드만 추린다 — 통째 저장은 상담(노트·수수료)·매물작업(광고)이
+  // 별도로 저장한 내용을 뷰어의 옛 상태로 덮어써 유실시킨다 (2026-07-22 상담 메모 유실 원인)
+  const ownFields = b => ({ image: b.image, notes: b.notes, capturedAt: b.capturedAt, info: b.info })
+
+  // 자동 저장 (디바운스) — 부분 저장
   useEffect(() => {
     if (!board?.image) return
-    const t = setTimeout(() => saveCardBoard(boardKey, board).catch(() => {}), 400)
+    const t = setTimeout(() => patchCardBoard(boardKey, ownFields(board)).catch(() => {}), 400)
     return () => clearTimeout(t)
   }, [board, boardKey])
 
@@ -320,13 +356,13 @@ function CaptureViewer({ boardKey, initBoard, onBack, active }) {
   const boardRef = useRef(board)
   boardRef.current = board
   useEffect(() => () => {
-    if (boardRef.current?.image) saveCardBoard(boardKey, boardRef.current).catch(() => {})
+    if (boardRef.current?.image) patchCardBoard(boardKey, ownFields(boardRef.current)).catch(() => {})
   }, [boardKey])
 
   async function handleSave() {
     if (!board?.image) return
     try {
-      await saveCardBoard(boardKey, board)
+      await patchCardBoard(boardKey, ownFields(board))
       setNotice('저장되었습니다')
     } catch (err) {
       setNotice(`저장 실패: ${err.message || err}`)
