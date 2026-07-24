@@ -45,6 +45,13 @@ export default function AdWorkTab({ cardKey, active }) {
   const saveTimer = useRef(null)
   const filledRef = useRef(null) // 이 카드에서 8·9 자동작성을 시도했는지
 
+  // 다른 카드로 바뀌면 화면 상태 초기화 — 이전 매물의 '작성완료' 화면이 남지 않게
+  useEffect(() => {
+    setView('write')
+    setCopied(false)
+    setNotice(null)
+  }, [cardKey])
+
   // 카드 로드 — 저장된 작성 내용 + 매물 정보(1~7 자동 채움)
   // 탭이 활성화될 때마다 다시 읽어, 늦게 끝난 AI 추출 정보도 반영되게 한다
   useEffect(() => {
