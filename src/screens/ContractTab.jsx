@@ -53,21 +53,30 @@ export default function ContractTab({ onComplete, cardKey, active }) {
 
   // 열려 있는 매물카드의 AI 추출 정보(상호·업종·사업자등록번호·소재지)를
   // 계약서 입력의 빈 칸에 자동으로 채운다 (사용자가 이미 쓴 값은 건드리지 않음)
+  // 단, "다른" 매물 카드를 새로 열었으면 이전 매물의 작성 내용을 비우고 새로 시작한다
+  // (같은 카드를 다시 열 때는 쓰던 내용 유지 — 2026-07-24 대표님 지시)
   useEffect(() => {
     if (!active || !cardKey) return
+    const prevKey = loadUi('contract.cardKey')
+    const isNewCard = Boolean(prevKey) && prevKey !== cardKey
+    saveUi('contract.cardKey', cardKey)
+    if (isNewCard) setStep('input')
     loadCardBoard(cardKey)
       .then(board => {
         const info = board?.info
-        if (!info) return
-        setDraft(d => ({
-          ...d,
-          storeName: d.storeName?.trim() ? d.storeName : (info.storeName || ''),
-          businessType: d.businessType?.trim() ? d.businessType : normalizeBizType(info.businessType),
-          bizNo: digitsOnly(d.bizNo) ? d.bizNo : (info.bizNo ? formatBizNo(info.bizNo) : ''),
-          address: d.address?.trim() ? d.address : (info.address || ''),
-        }))
+        setDraft(d => {
+          const base = isNewCard ? makeEmptyDraft() : d
+          if (!info) return base
+          return {
+            ...base,
+            storeName: base.storeName?.trim() ? base.storeName : (info.storeName || ''),
+            businessType: base.businessType?.trim() ? base.businessType : normalizeBizType(info.businessType),
+            bizNo: digitsOnly(base.bizNo) ? base.bizNo : (info.bizNo ? formatBizNo(info.bizNo) : ''),
+            address: base.address?.trim() ? base.address : (info.address || ''),
+          }
+        })
       })
-      .catch(() => {})
+      .catch(() => { if (isNewCard) setDraft(makeEmptyDraft()) })
   }, [active, cardKey])
 
   return (
