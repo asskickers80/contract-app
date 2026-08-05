@@ -4,7 +4,9 @@ import SettingsSheet from '../components/SettingsSheet.jsx'
 import ContractForm from './ContractForm.jsx'
 import SignScreen from './SignScreen.jsx'
 import { makeEmptyDraft, validateDraft } from '../lib/draft.js'
-import { loadCardBoard } from '../lib/boardStore.js'
+import { loadCardBoard, patchCardBoard } from '../lib/boardStore.js'
+import { listContracts, downloadContractPdf, isSupabaseConfigured } from '../lib/supabase.js'
+import { sharePdf, downloadBlob } from '../lib/share.js'
 import { formatBizNo, digitsOnly } from '../lib/format.js'
 import { CATEGORIES } from '../constants/categories.js'
 import { loadUi, saveUi } from '../lib/uiState.js'
@@ -40,6 +42,8 @@ export default function ContractTab({ onComplete, cardKey, active }) {
   )
   const [draft, setDraft] = useState(restoreDraft)
   const [showSettings, setShowSettings] = useState(false)
+  const [done, setDone] = useState(null)      // 이 카드에 연결된 완료 계약 (있으면 완료 화면)
+  const [writeNew, setWriteNew] = useState(false) // 완료된 매물에서 '새 계약 작성'을 눌렀는지
 
   // 입력할 때마다 자동 임시저장 — 새로고침해도 쓰던 내용 유지
   useEffect(() => {
@@ -60,9 +64,27 @@ export default function ContractTab({ onComplete, cardKey, active }) {
     const prevKey = loadUi('contract.cardKey')
     const isNewCard = Boolean(prevKey) && prevKey !== cardKey
     saveUi('contract.cardKey', cardKey)
-    if (isNewCard) setStep('input')
+    if (isNewCard) { setStep('input'); setWriteNew(false) }
     loadCardBoard(cardKey)
-      .then(board => {
+      .then(async board => {
+        // 이 매물로 완료된 계약이 있으면 완료 화면을 먼저 보여준다 (서명본 유실 아님 — 재전달 가능)
+        let c = board?.contract || null
+        if (!c && isSupabaseConfigured && board?.info?.storeName) {
+          // 연결 정보가 없는 옛 카드 — 계약 목록에서 상호로 찾아 자동 연결
+          try {
+            const rows = await listContracts(board.info.storeName)
+            if (rows?.length) {
+              const r = rows[0]
+              c = {
+                id: r.id, pdfPath: r.pdf_path, fileName: r.file_name,
+                storeName: r.store_name, customerName: '', total: r.total ?? null,
+                signedAt: r.signed_at || null,
+              }
+              patchCardBoard(cardKey, { contract: c }).catch(() => {})
+            }
+          } catch { /* 조회 실패 시 그냥 서식으로 */ }
+        }
+        setDone(c)
         const info = board?.info
         setDraft(d => {
           const base = isNewCard ? makeEmptyDraft() : d
@@ -76,7 +98,7 @@ export default function ContractTab({ onComplete, cardKey, active }) {
           }
         })
       })
-      .catch(() => { if (isNewCard) setDraft(makeEmptyDraft()) })
+      .catch(() => { if (isNewCard) { setDone(null); setDraft(makeEmptyDraft()) } })
   }, [active, cardKey])
 
   return (
@@ -88,7 +110,10 @@ export default function ContractTab({ onComplete, cardKey, active }) {
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {step === 'input' && (
+        {step === 'input' && done && !writeNew && (
+          <CompletedContract done={done} onWriteNew={() => setWriteNew(true)} />
+        )}
+        {step === 'input' && !(done && !writeNew) && (
           <ContractForm
             draft={draft}
             onChange={setDraft}
@@ -116,6 +141,62 @@ export default function ContractTab({ onComplete, cardKey, active }) {
           }}
         />
       )}
+    </div>
+  )
+}
+
+// ── 완료된 계약 화면 — 서명본은 서버에 있으므로 재전달·다운로드로 바로 쓴다 ──
+function CompletedContract({ done, onWriteNew }) {
+  const [busy, setBusy] = useState(false)
+
+  async function withPdf(action) {
+    if (!done.pdfPath) return
+    setBusy(true)
+    try {
+      const blob = await downloadContractPdf(done.pdfPath)
+      await action(blob, done.fileName || `${done.storeName || '계약서'}.pdf`)
+    } catch (err) {
+      alert(`PDF를 가져오지 못했어요: ${err.message || err}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="mx-auto mt-6 max-w-2xl px-4 pb-10">
+      <div className="rounded-2xl bg-card p-5 shadow-card">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-ok px-3 py-1 text-xs font-bold text-on-ok">✓ 계약 완료</span>
+        <p className="mt-3 text-lg font-extrabold text-fg">{done.storeName || '상호 미확인'}</p>
+        <p className="mt-1 text-sm text-fg-2">
+          {done.customerName ? `광고주 ${done.customerName} · ` : ''}
+          서명 {done.signedAt ? new Date(done.signedAt).toLocaleString('ko-KR') : '—'}
+        </p>
+        {done.total != null && (
+          <p className="mt-0.5 text-sm text-fg-2">총 {Number(done.total).toLocaleString('ko-KR')}원 <span className="text-xs text-fg-hint">(부가세 포함)</span></p>
+        )}
+
+        {done.pdfPath ? (
+          <div className="mt-4 flex gap-2">
+            <button onClick={() => withPdf((blob, name) => sharePdf(blob, name))} disabled={busy}
+              className="flex-1 rounded-full bg-primary py-3 text-sm font-bold text-on-primary active:opacity-90 disabled:opacity-50">
+              {busy ? '…' : '계약서 재전달'}
+            </button>
+            <button onClick={() => withPdf((blob, name) => downloadBlob(blob, name))} disabled={busy}
+              className="flex-1 rounded-full border border-line bg-card py-3 text-sm font-semibold text-primary active:bg-chip disabled:opacity-50">
+              다운로드
+            </button>
+          </div>
+        ) : (
+          <p className="mt-4 rounded-xl bg-inset px-3.5 py-2.5 text-xs text-fg-2">
+            서명된 계약서 PDF는 전달·결제 탭의 <b>계약 목록 · 재전달</b>에서 상호로 검색해 받을 수 있어요.
+          </p>
+        )}
+      </div>
+
+      <button onClick={onWriteNew}
+        className="mt-4 w-full rounded-full border border-line bg-card py-3 text-sm font-semibold text-fg-2 active:bg-chip">
+        이 매물로 새 계약 작성 (완료된 계약은 그대로 보관됩니다)
+      </button>
     </div>
   )
 }

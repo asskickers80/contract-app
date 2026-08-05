@@ -105,6 +105,7 @@ function WorkArchive({ onOpenCard }) {
     if (entry.fee && (entry.fee.deposit || entry.fee.monthlyRent || entry.fee.premium)) list.push('수수료')
     if (entry.info) list.push('매물정보')
     if (entry.ad?.generated) list.push('광고문')
+    if (entry.contract) list.push('계약완료')
     return list
   }
 
@@ -175,7 +176,9 @@ function WorkArchive({ onOpenCard }) {
             <div className="mt-1.5 flex flex-wrap gap-1">
               {badges(entry).map(b => (
                 <span key={b} className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                  b === '광고문' ? 'bg-opt-container text-on-opt-container' : 'bg-chip text-fg-2'
+                  b === '광고문' ? 'bg-opt-container text-on-opt-container'
+                  : b === '계약완료' ? 'bg-ok text-on-ok'
+                  : 'bg-chip text-fg-2'
                 }`}>
                   {b}
                 </span>
