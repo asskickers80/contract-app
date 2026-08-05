@@ -9,6 +9,7 @@ import DeliveryTab from './screens/DeliveryTab.jsx'
 import AdWorkTab from './screens/AdWorkTab.jsx'
 import { loadUi, saveUi, FRESH_LAUNCH } from './lib/uiState.js'
 import { initBackGuard } from './lib/backNav.js'
+import { patchCardBoard } from './lib/boardStore.js'
 
 // [0 매물카드] [1 노트] [2 계약] [3 전달·결제]
 // 천하통일(인트라넷) 탭 완전 제거 (2026-07-11 대표님 결정)
@@ -33,6 +34,21 @@ export default function App() {
   useEffect(() => { initBackGuard() }, [])
 
   function handleContractComplete(result) {
+    // 서명 완료된 계약을 열려 있는 매물 카드에 연결 — 나중에 카드를 다시 열면
+    // 계약 탭에서 완료 상태와 PDF 재전달을 바로 볼 수 있다
+    if (activeCardKey) {
+      patchCardBoard(activeCardKey, {
+        contract: {
+          id: result.savedRow?.id || null,
+          pdfPath: result.savedRow?.pdf_path || null,
+          fileName: result.fileName || null,
+          storeName: result.contract?.storeName || '',
+          customerName: result.contract?.customerName || '',
+          total: result.contract?.total ?? null,
+          signedAt: result.signedAt || null,
+        },
+      }).catch(() => {})
+    }
     setContractResult(result)
     setContractKey(k => k + 1)
     setActive(3)
