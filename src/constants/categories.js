@@ -33,4 +33,7 @@ export const PRODUCTS = [
   { name: '하단광고', fee: 1000000, vat: 100000, total: 1100000 },
   { name: '중간광고', fee: 2000000, vat: 200000, total: 2200000 },
   { name: '최상단광고', fee: 3000000, vat: 300000, total: 3300000 },
+  { name: '중앙배너 패키지', fee: 8000000, vat: 800000, total: 8800000 },
+  { name: 'TOP배너 패키지', fee: 6000000, vat: 600000, total: 6600000 },
+  { name: '돌출배너 패키지', fee: 5000000, vat: 500000, total: 5500000 },
 ];
