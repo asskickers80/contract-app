@@ -68,6 +68,22 @@ async function makeThumb(dataUrl) {
   }
 }
 
+// ── 서버 백업 상태 — 실패를 조용히 넘기지 않고 화면 배너로 알린다 ──
+// 2026-08-19: boards 테이블 미생성 등으로 서버 백업이 안 되는데도 표시가 없어
+// 기기 저장소 유실(홈 화면 앱 재설치) 때 데이터를 잃는 사고 재발 방지
+let syncState = { status: isSupabaseConfigured ? 'unknown' : 'off', message: null }
+const syncListeners = new Set()
+export function onSyncState(cb) {
+  syncListeners.add(cb)
+  cb(syncState)
+  return () => syncListeners.delete(cb)
+}
+function setSync(status, message = null) {
+  if (syncState.status === status && syncState.message === message) return
+  syncState = { status, message }
+  for (const cb of syncListeners) cb(syncState)
+}
+
 // ── 원격 동기화 ──────────────────────────────────────────────
 const pushedSig = new Map()   // key → 서버에 올라간 이미지 지문 (이미지 재전송 방지)
 const pushChain = new Map()   // key → 순서 보장용 프로미스 체인
@@ -92,9 +108,15 @@ async function pushRemote(cardKey, board) {
       row.thumb = board.image ? await makeThumb(board.image) : null
     }
     const { error } = await supabase.from('boards').upsert(row)
-    if (!error && 'image' in row) pushedSig.set(key, sig)
-  } catch {
+    if (error) {
+      setSync('fail', error.message)
+    } else {
+      setSync('ok')
+      if ('image' in row) pushedSig.set(key, sig)
+    }
+  } catch (err) {
     // 오프라인 등 — 로컬 저장은 유지되며 다음 저장 때 다시 시도된다
+    setSync('fail', err?.message || String(err))
   }
 }
 
@@ -124,6 +146,13 @@ function flushPending() {
   pushTimers.clear()
   for (const [, p] of pendingBoards) queuePush(p.cardKey, p.board)
   pendingBoards.clear()
+}
+
+// 앱 시작 시 서버 백업 상태를 1회 점검 — 테이블 미생성·권한 문제를 첫 화면에서 바로 알린다
+if (typeof window !== 'undefined' && isSupabaseConfigured) {
+  supabase.from('boards').select('key').limit(1)
+    .then(({ error }) => (error ? setSync('fail', error.message) : setSync('ok')))
+    .catch(err => setSync('fail', err?.message || String(err)))
 }
 
 if (typeof window !== 'undefined') {
@@ -219,7 +248,11 @@ export async function listCardBoards() {
       .select('key, store_name, captured_at, thumb, image_sig, data')
       .order('captured_at', { ascending: false })
       .limit(300)
-    if (error || !data) return localP
+    if (error || !data) {
+      if (error) setSync('fail', error.message)
+      return localP
+    }
+    setSync('ok')
     const remote = data.map(r => ({ key: r.key, ...rowToBoard(r, { thumbAsImage: true }) }))
     const remoteKeys = new Set(remote.map(r => String(r.key)))
     const local = await localP
@@ -227,7 +260,8 @@ export async function listCardBoards() {
     for (const l of localOnly) queuePush(l.key, l) // 기기에만 남은 작업 → 서버로 복구
     return [...remote, ...localOnly]
       .sort((a, b) => (b.capturedAt || '').localeCompare(a.capturedAt || ''))
-  } catch {
+  } catch (err) {
+    setSync('fail', err?.message || String(err))
     return localP
   }
 }
