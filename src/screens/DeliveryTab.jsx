@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Complete from './Complete.jsx'
 import ContractList from './ContractList.jsx'
 import { listCardBoards, deleteCardBoard, patchCardBoard } from '../lib/boardStore.js'
+import SyncBanner from '../components/SyncBanner.jsx'
 import { copyText } from '../lib/share.js'
 
 // [전달·결제] 탭 — 방금 서명 완료된 계약의 공유·바로결제
@@ -24,6 +25,7 @@ export default function DeliveryTab({ result, onNewContract, onOpenCard }) {
       <div className="mx-auto max-w-2xl px-4 pb-2 pt-6">
         <h2 className="px-1 text-sm font-extrabold text-fg">작업 보관함 <span className="text-xs font-normal text-fg-hint">(매물별 캡처·메모·노트·수수료·광고)</span></h2>
       </div>
+      <SyncBanner />
       <WorkArchive onOpenCard={onOpenCard} />
 
       <div className="mx-auto max-w-2xl px-4 pb-4 pt-6">

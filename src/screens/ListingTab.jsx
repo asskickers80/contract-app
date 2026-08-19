@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import CaptureBoard from '../components/CaptureBoard.jsx'
 import { loadCardBoard, saveCardBoard, patchCardBoard, listCardBoards, deleteCardBoard, imageSig } from '../lib/boardStore.js'
+import SyncBanner from '../components/SyncBanner.jsx'
 import { formatPhone, formatComma, parseAmount, formatBizNo } from '../lib/format.js'
 import { loadUi, saveUi, FRESH_LAUNCH } from '../lib/uiState.js'
 import { useBackClose } from '../lib/backNav.js'
@@ -112,6 +113,7 @@ function HomeScreen({ onNew, onLibrary }) {
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-6 px-8">
+      <div className="w-full max-w-sm"><SyncBanner /></div>
       <h1 className="text-2xl font-extrabold text-fg">캡처 뷰어</h1>
       <p className="text-sm text-fg-hint">캡처 이미지에 포스트잇 메모를 붙여 보관하세요</p>
 
@@ -241,6 +243,7 @@ function LibraryScreen({ onOpen, onBack }) {
       </div>
 
       <div className="flex-1 overflow-y-auto pb-6">
+        <SyncBanner />
         {loading && <p className="py-10 text-center text-sm text-fg-hint">불러오는 중…</p>}
 
         {!loading && (
