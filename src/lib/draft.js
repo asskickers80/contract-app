@@ -20,6 +20,7 @@ export function makeEmptyDraft() {
     periodMonths: 3,
     endDate: addMonths(today, 3),
     customerName: '',
+    specialTerms: '', // 특약사항 (선택) — 입력 시에만 계약서 최상단 여백에 인쇄
   }
 }
 
