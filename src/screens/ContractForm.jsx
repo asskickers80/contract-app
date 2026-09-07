@@ -171,6 +171,16 @@ export default function ContractForm({ draft, onChange, onGenerate }) {
             </div>
           </div>
         </Section>
+
+        <Section title="특약사항 (선택)">
+          <textarea
+            value={draft.specialTerms || ''}
+            onChange={e => set({ specialTerms: e.target.value })}
+            rows={2}
+            placeholder="입력하면 계약서 맨 위 여백에 '※ 특약사항: …'으로 인쇄됩니다. 비워 두면 계약서는 원본 그대로 출력돼요."
+            className="w-full resize-none rounded-xl bg-field px-3.5 py-3 text-base font-semibold text-fg placeholder:font-normal placeholder:text-fg-hint focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </Section>
       </div>
 
       <div className="fixed inset-x-0 bottom-0 bg-surface/95 p-4 backdrop-blur">

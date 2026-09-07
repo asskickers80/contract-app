@@ -4,7 +4,7 @@
 // 글자 오버레이는 폰트 임베드 대신 캔버스로 그려 PNG로 합성한다.
 // (pdf-lib 한글 폰트 subset 임베드가 글리프를 깨뜨리는 문제 회피 + PDF 용량 절감)
 import { PDFDocument } from 'pdf-lib'
-import { FORM_IMAGE, POS, RECTS, IMG_PT_WIDTH } from '../data/formLayout.js'
+import { FORM_IMAGE, POS, RECTS, IMG_PT_WIDTH, SPECIAL_TERMS } from '../data/formLayout.js'
 
 const A4 = { width: 595.28, height: 841.89 }
 const A4_IMG_W = IMG_PT_WIDTH // A4에 이미지를 맞췄을 때 이미지 폭(pt) — pos.size(pt) 환산 기준
@@ -93,6 +93,35 @@ export function buildTextOverlay(contract, signedDate, imgW, imgH) {
   }
 
   drawField(POS.customerName, contract.customerName)
+
+  // 특약사항 — 페이지 최상단 여백. 입력했을 때만 그린다 (비우면 원본 그대로)
+  const special = (contract.specialTerms || '').trim()
+  if (special) {
+    const x0 = SPECIAL_TERMS.x0 * W
+    const maxW = (SPECIAL_TERMS.x1 - SPECIAL_TERMS.x0) * W
+    const full = `※ 특약사항: ${special.replace(/\s*\n\s*/g, ' / ')}` // 줄바꿈은 '/'로 이어 한 문단으로
+    // 글자 단위 줄바꿈 — maxLines 안에 안 들어가면 6.5pt까지 축소
+    let size = SPECIAL_TERMS.size
+    let lines
+    for (;;) {
+      const px = (size / A4_IMG_W) * W
+      ctx.font = `500 ${px}px -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif`
+      lines = []
+      let cur = ''
+      for (const ch of [...full]) {
+        if (ctx.measureText(cur + ch).width > maxW && cur) { lines.push(cur); cur = ch }
+        else cur += ch
+      }
+      if (cur) lines.push(cur)
+      if (lines.length <= SPECIAL_TERMS.maxLines || size <= 6.5) break
+      size -= 0.5
+    }
+    ctx.fillStyle = INK
+    ctx.textBaseline = 'alphabetic'
+    lines.slice(0, SPECIAL_TERMS.maxLines).forEach((ln, i) => {
+      ctx.fillText(ln, x0, (SPECIAL_TERMS.yFirst + i * SPECIAL_TERMS.lineH) * H)
+    })
+  }
 
   return canvas.toDataURL('image/png')
 }
