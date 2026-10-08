@@ -201,6 +201,8 @@ export function patchCardBoard(cardKey, patch) {
 
 // 열기: 서버·기기 중 최신본 사용. 서버 전송은 1.5초 디바운스라 방금 저장한 작업은
 // 기기 쪽이 더 새것일 수 있다 — 그때 서버(옛것)로 기기를 덮으면 작업이 사라진다.
+// 속도: 원본 이미지(수 MB)는 기기 캐시와 지문(image_sig)이 같으면 다시 받지 않는다
+// (탭을 오갈 때마다 이미지를 통째로 내려받아 느려지던 문제 — 2026-10-08)
 export async function loadCardBoard(cardKey) {
   const key = String(cardKey)
   const local = await get(CARD_STORE, cardKey).catch(() => null)
@@ -208,12 +210,30 @@ export async function loadCardBoard(cardKey) {
   if (pendingBoards.has(key)) return local
   if (isSupabaseConfigured) {
     try {
+      // 1차: 이미지 컬럼 제외 조회 (가벼움)
       const { data, error } = await supabase
-        .from('boards').select('*').eq('key', key).maybeSingle()
+        .from('boards')
+        .select('key, store_name, captured_at, updated_at, image_sig, data')
+        .eq('key', key).maybeSingle()
       if (!error && data) {
-        const board = rowToBoard(data)
-        const remoteAt = board.updatedAt || data.updated_at || ''
+        const remoteAt = data.data?.updatedAt || data.updated_at || ''
         if (local?.updatedAt && remoteAt && local.updatedAt > remoteAt) return local
+        // 기기 캐시의 이미지가 서버와 같은 캡처면 재사용 — 다운로드 생략
+        const localSig = local?.image ? (local.imageSig || imageSig(local.image)) : null
+        let image = null
+        if (local?.image && data.image_sig && localSig === data.image_sig) {
+          image = local.image
+        } else {
+          const { data: imgRow } = await supabase
+            .from('boards').select('image').eq('key', key).maybeSingle()
+          image = imgRow?.image || local?.image || null
+        }
+        const board = {
+          ...(data.data || {}),
+          image,
+          imageSig: data.image_sig || null,
+          capturedAt: data.captured_at || data.data?.capturedAt || null,
+        }
         pushedSig.set(key, board.imageSig || imageSig(board.image))
         put(CARD_STORE, cardKey, board).catch(() => {}) // 기기 캐시 갱신
         return board

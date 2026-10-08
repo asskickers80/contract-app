@@ -5,6 +5,7 @@ import SyncBanner from '../components/SyncBanner.jsx'
 import { formatPhone, formatComma, parseAmount, formatBizNo } from '../lib/format.js'
 import { loadUi, saveUi, FRESH_LAUNCH } from '../lib/uiState.js'
 import { useBackClose } from '../lib/backNav.js'
+import { fetchWithTimeout } from '../lib/net.js'
 
 // 보드 저장 키 자동 생성 (폼 제거로 전화번호 키 폐지)
 const newBoardKey = () => `cap-${Date.now()}`
@@ -389,7 +390,7 @@ function CaptureViewer({ boardKey, initBoard, onBack, active }) {
     setNotice(null)
     try {
       const image = await downscaleImage(board.image)
-      const r = await fetch('/api/extract', {
+      const r = await fetchWithTimeout('/api/extract', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ image }),
