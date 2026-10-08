@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { loadCardBoard, patchCardBoard } from '../lib/boardStore.js'
 import { formatComma, parseAmount } from '../lib/format.js'
+import { fetchWithTimeout } from '../lib/net.js'
 
 // [매물작업] 탭 — 광고작성(12항목 입력) ↔ 작성완료(AI가 쓴 매물광고)
 // 1~7번은 매물카드 AI 추출값으로 자동 채움, 8~9번은 AI가 대표님 기준대로 작성,
@@ -114,7 +115,7 @@ export default function AdWorkTab({ cardKey, active }) {
     if (!force && fields.tradeArea.trim() && fields.franchise.trim()) return
     setBusy('fill')
     try {
-      const r = await fetch('/api/adwrite', {
+      const r = await fetchWithTimeout('/api/adwrite', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -161,7 +162,7 @@ export default function AdWorkTab({ cardKey, active }) {
     if (busy) return
     setBusy('compose')
     try {
-      const r = await fetch('/api/adwrite', {
+      const r = await fetchWithTimeout('/api/adwrite', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({

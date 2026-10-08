@@ -89,7 +89,21 @@ const COMPOSE_GUIDE = `
 - 매출·순익·회수는 보장처럼 쓰지 않는다. 입지 구조 + 반복수요 + 검증된 매출 + 운영 개선 여지 + 양도 사유의 신뢰도로 설득한다.
 - 정보가 비어 있는 섹션(예: 매출 미제공)은 지어내지 말고 해당 섹션을 생략한다.`
 
-export const config = { api: { bodyParser: { sizeLimit: '1mb' } } }
+// Vercel 함수 실행 제한 60초 — 기본값(10초)이면 pro가 느릴 때 flash 폴백 전에 끊긴다
+export const config = { api: { bodyParser: { sizeLimit: '1mb' } }, maxDuration: 60 }
+
+// 모델별 응답 제한 — pro가 이 시간을 넘기면 끊고 flash로 넘어간다 (단계 멈춤 방지)
+const MODEL_TIMEOUT_MS = 25_000
+
+async function fetchWithTimeout(url, opts, ms) {
+  const ac = new AbortController()
+  const t = setTimeout(() => ac.abort(), ms)
+  try {
+    return await fetch(url, { ...opts, signal: ac.signal })
+  } finally {
+    clearTimeout(t)
+  }
+}
 
 const pickText = data => data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || ''
 
@@ -105,14 +119,21 @@ async function callGemini(key, prompt, schema) {
   let lastStatus = 502
   let lastMsg = 'Gemini API 오류'
   for (const model of MODELS) {
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      { method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': key }, body },
-    )
-    const data = await r.json().catch(() => ({}))
-    if (r.ok) return { ok: true, json: JSON.parse(pickText(data)), model }
-    lastStatus = r.status
-    lastMsg = data?.error?.message || `Gemini API 오류 (HTTP ${r.status})`
+    try {
+      const r = await fetchWithTimeout(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        { method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': key }, body },
+        MODEL_TIMEOUT_MS,
+      )
+      const data = await r.json().catch(() => ({}))
+      if (r.ok) return { ok: true, json: JSON.parse(pickText(data)), model }
+      lastStatus = r.status
+      lastMsg = data?.error?.message || `Gemini API 오류 (HTTP ${r.status})`
+    } catch (err) {
+      // 시간 초과·네트워크 오류 — 다음 모델로
+      lastStatus = 504
+      lastMsg = err?.name === 'AbortError' ? `${model} 응답 지연` : (err.message || String(err))
+    }
   }
   return { ok: false, status: lastStatus, msg: lastMsg }
 }

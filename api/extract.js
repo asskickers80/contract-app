@@ -39,7 +39,21 @@ const PROMPT = `이 이미지는 상가 매물 정보 페이지의 화면 캡처
 - 이미지에서 확인할 수 없는 항목은 null로 둔다. 절대 추측하거나 지어내지 마라.
 - 최종 답 전에 각 값을 이미지에서 한 번 더 대조 확인하라.`
 
-export const config = { api: { bodyParser: { sizeLimit: '4mb' } } }
+// Vercel 함수 실행 제한 60초 — 기본값(10초)이면 pro가 느릴 때 flash 폴백 전에 끊긴다
+export const config = { api: { bodyParser: { sizeLimit: '4mb' } }, maxDuration: 60 }
+
+// 모델별 응답 제한 — pro가 이 시간을 넘기면 끊고 flash로 넘어간다 (단계 멈춤 방지)
+const MODEL_TIMEOUT_MS = 25_000
+
+export async function fetchWithTimeout(url, opts, ms) {
+  const ac = new AbortController()
+  const t = setTimeout(() => ac.abort(), ms)
+  try {
+    return await fetch(url, { ...opts, signal: ac.signal })
+  } finally {
+    clearTimeout(t)
+  }
+}
 
 // dataURL 파싱 — 테스트에서 직접 호출
 export function parseDataUrl(image) {
@@ -85,25 +99,32 @@ export default async function handler(req, res) {
       },
     })
 
-    // pro 먼저 시도, 실패(한도 초과 등) 시 flash로 폴백
+    // pro 먼저 시도, 실패·지연 시 flash로 폴백
     let lastStatus = 502
     let lastMsg = 'Gemini API 오류'
     for (const model of MODELS) {
-      const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
-          body,
-        },
-      )
-      const data = await r.json().catch(() => ({}))
-      if (r.ok) {
-        res.status(200).json({ fields: pickFields(data), model })
-        return
+      try {
+        const r = await fetchWithTimeout(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
+            body,
+          },
+          MODEL_TIMEOUT_MS,
+        )
+        const data = await r.json().catch(() => ({}))
+        if (r.ok) {
+          res.status(200).json({ fields: pickFields(data), model })
+          return
+        }
+        lastStatus = r.status
+        lastMsg = data?.error?.message || `Gemini API 오류 (HTTP ${r.status})`
+      } catch (err) {
+        // 시간 초과·네트워크 오류 — 다음 모델로
+        lastStatus = 504
+        lastMsg = err?.name === 'AbortError' ? `${model} 응답 지연` : (err.message || String(err))
       }
-      lastStatus = r.status
-      lastMsg = data?.error?.message || `Gemini API 오류 (HTTP ${r.status})`
     }
 
     // 모든 모델 실패 — 429 = 무료 등급 사용량 초과
