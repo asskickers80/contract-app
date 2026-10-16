@@ -102,14 +102,28 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
 // ── 홈: 신규 / 불러오기 ──────────────────────────────────────
 function HomeScreen({ onNew, onLibrary }) {
   const fileRef = useRef()
+  // iOS 사진 선택창의 미리보기가 작아 어떤 캡처인지 알기 어려움 (2026-10-09 대표님 보고)
+  // → 선택 직후 앱 안에서 크게 보여주고 확인 후 시작한다
+  const [preview, setPreview] = useState(null)
 
   function handleFileChange(e) {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = ev => onNew(ev.target.result)
+    reader.onload = ev => setPreview(ev.target.result)
     reader.readAsDataURL(file)
     e.target.value = ''
+  }
+
+  function startWithPreview() {
+    const img = preview
+    setPreview(null)
+    onNew(img)
+  }
+
+  function repick() {
+    setPreview(null)
+    fileRef.current?.click()
   }
 
   return (
@@ -150,6 +164,33 @@ function HomeScreen({ onNew, onLibrary }) {
       />
 
       <p className="text-[11px] text-fg-disabled">버전 {__BUILD_TIME__} 빌드</p>
+
+      {/* 선택한 캡처 확인 — 사진 선택창 미리보기가 작아서, 여기서 크게 보고 시작한다 */}
+      {preview && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-surface">
+          <div className="flex items-center justify-between px-5 py-3">
+            <p className="text-base font-extrabold text-fg">이 캡처가 맞나요?</p>
+            <button onClick={() => setPreview(null)}
+              className="rounded-full bg-chip px-4 py-2 text-sm font-bold text-fg-2 active:opacity-80">
+              취소
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+            <img src={preview} alt="선택한 캡처 미리보기"
+              className="mx-auto w-full max-w-3xl rounded-xl bg-card shadow-card" />
+          </div>
+          <div className="flex gap-2 border-t border-line bg-surface p-4 pb-6">
+            <button onClick={repick}
+              className="rounded-full bg-chip px-5 py-3.5 text-[15px] font-bold text-fg-2 active:opacity-80">
+              다시 선택
+            </button>
+            <button onClick={startWithPreview}
+              className="flex-1 rounded-full bg-primary py-3.5 text-[15px] font-bold text-on-primary active:opacity-90">
+              이 캡처로 시작
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

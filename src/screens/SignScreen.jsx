@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import ContractPaper from '../components/ContractPaper.jsx'
 import SignPad from '../components/SignPad.jsx'
+import PaperInk from '../components/PaperInk.jsx'
 import { HANDWRITTEN_NOTICE, HANDWRITTEN_GUIDE, toSegments } from '../data/contract.js'
 import { generateContractPdf } from '../lib/pdf.js'
 import { buildPdfFileName, toDateInputValue } from '../lib/format.js'
@@ -15,8 +16,10 @@ export default function SignScreen({ draft, onDone }) {
   const [customerName, setCustomerName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [penOn, setPenOn] = useState(false) // 설명용 펜 (화면 전용 — PDF 미포함)
   const handwritingRef = useRef(null)
   const signatureRef = useRef(null)
+  const paperInkRef = useRef(null)
 
   function handleScroll(e) {
     const el = e.currentTarget
@@ -67,14 +70,40 @@ export default function SignScreen({ draft, onDone }) {
           <p className="text-base font-extrabold text-fg">계약 내용 확인 및 서명</p>
           <p className="mt-0.5 text-xs text-fg-hint">iPad를 고객님께 전달해 주세요</p>
         </div>
-        {/* 1. 계약서 전문 열람 (스크롤 게이트) */}
+        {/* 1. 계약서 전문 열람 (스크롤 게이트) + 설명용 펜 */}
         <div className="overflow-hidden rounded-2xl bg-card shadow-card">
-          <div className="px-4 py-3">
-            <p className="text-sm font-extrabold text-fg">1. 계약서를 끝까지 읽어 주세요</p>
-            <p className="text-xs text-fg-hint">아래 상자를 맨 아래까지 스크롤하면 서명 칸이 열립니다.</p>
+          <div className="flex items-center gap-2 px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-extrabold text-fg">1. 계약서를 끝까지 읽어 주세요</p>
+              <p className="text-xs text-fg-hint">
+                {penOn
+                  ? '펜슬로 계약서 위에 표시하며 설명하세요 — 화면 설명용이라 저장되는 계약서에는 안 들어가요'
+                  : '아래 상자를 맨 아래까지 스크롤하면 서명 칸이 열립니다.'}
+              </p>
+            </div>
+            {penOn && (
+              <>
+                <button onClick={() => paperInkRef.current?.undo()}
+                  className="shrink-0 rounded-full bg-chip px-3 py-2 text-xs font-bold text-fg-2 active:opacity-80">
+                  ↩
+                </button>
+                <button onClick={() => paperInkRef.current?.clear()}
+                  className="shrink-0 rounded-full bg-chip px-3 py-2 text-xs font-bold text-fg-2 active:opacity-80">
+                  지우기
+                </button>
+              </>
+            )}
+            <button onClick={() => setPenOn(v => !v)}
+              className={`shrink-0 rounded-full px-3.5 py-2 text-xs font-bold active:opacity-80 ${
+                penOn ? 'bg-primary text-on-primary' : 'bg-chip text-fg-2'
+              }`}>
+              {penOn ? '✏ 펜 끄기' : '✏ 펜'}
+            </button>
           </div>
           <div onScroll={handleScroll} className="h-[52dvh] overflow-y-auto overscroll-contain">
-            <ContractPaper contract={draft} />
+            <PaperInk ref={paperInkRef} penOn={penOn}>
+              <ContractPaper contract={draft} />
+            </PaperInk>
           </div>
           <div className={`px-4 py-2.5 text-center text-sm font-bold ${scrolledToEnd ? 'bg-ok text-on-ok' : 'bg-warn text-on-warn'}`}>
             {scrolledToEnd ? '✓ 끝까지 확인하셨습니다' : '⌄ 아직 읽지 않은 내용이 있어요'}
