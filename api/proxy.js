@@ -97,19 +97,26 @@ const DIAG_SCRIPT = '<script>(function(){if(window.__diag)return;window.__diag=1
   'window.addEventListener("error",function(e){line("JSERR "+(e.message||""));});' +
   'line("DIAG ready "+location.pathname);})();</script>'
 
-// 초기화 스크립트(ASCII 전용). 두 가지를 페이지 스크립트보다 먼저 처리:
+// 초기화 스크립트(ASCII 전용). 페이지 스크립트보다 먼저 처리:
 //  (1) document.domain 크래시 방지: 인트라넷이 document.domain="jumpoline.com"을 설정하는데
 //      프록시 주소(vercel.app)에선 SecurityError를 내며 페이지 스크립트가 통째로 멈춘다.
 //      → setter를 무력화. (모든 프레임이 이미 같은 프록시 오리진이라 document.domain 불필요)
-//  (2) 프레임 유지: 링크/폼/base의 target=_top|_parent|_blank를 _self로 바꿔 탭 안에 머물게.
-const FRAME_KEEP_SCRIPT = '<script>(function(){if(window.__fk)return;window.__fk=1;' +
+//  (2) 새 창 대응: window.open / target=_blank·이름있는 target 링크는 앱(최상위)으로
+//      postMessage(__intranetOpen) → 앱이 "앱 안의 새 탭(iframe)"으로 연다. 앱 밖 이탈 방지.
+//      폼(POST)의 target은 _self로 바꿔 현재 창에서 제출한다.
+export const FRAME_KEEP_SCRIPT = '<script>(function(){if(window.__fk)return;window.__fk=1;' +
   'try{Object.defineProperty(document,"domain",{configurable:true,get:function(){return location.hostname;},set:function(){}});}catch(e){}' +
-  'function fix(el){try{var t=(el.getAttribute("target")||"").toLowerCase();' +
-  'if(t==="_top"||t==="_parent"||t==="_blank")el.setAttribute("target","_self");}catch(e){}}' +
-  'document.addEventListener("click",function(e){var n=e.target;' +
-  'var a=n&&n.closest?n.closest("a[target]"):null;if(a)fix(a);},true);' +
-  'document.addEventListener("submit",function(e){if(e.target&&e.target.tagName==="FORM")fix(e.target);},true);' +
-  'function bases(){try{var b=document.getElementsByTagName("base");for(var i=0;i<b.length;i++)fix(b[i]);}catch(e){}}' +
+  'function openTab(u){try{window.top.postMessage({__intranetOpen:String(u||"")},location.origin);}catch(e){}}' +
+  'window.open=function(u){if(u){openTab(u);}return null;};' +
+  'document.addEventListener("click",function(e){var n=e.target;var a=n&&n.closest?n.closest("a[target]"):null;' +
+  'if(!a)return;var t=(a.getAttribute("target")||"").toLowerCase();if(!t||t==="_self")return;' +
+  'var h=a.getAttribute("href")||"";' +
+  'if(h&&h!=="#"&&h.toLowerCase().indexOf("javascript:")!==0){e.preventDefault();e.stopPropagation();openTab(a.href);}' +
+  'else{a.setAttribute("target","_self");}},true);' +
+  'document.addEventListener("submit",function(e){var f=e.target;if(f&&f.tagName==="FORM"){' +
+  'var t=(f.getAttribute("target")||"").toLowerCase();if(t&&t!=="_self")f.setAttribute("target","_self");}},true);' +
+  'function bases(){try{var b=document.getElementsByTagName("base");for(var i=0;i<b.length;i++){' +
+  'var t=(b[i].getAttribute("target")||"").toLowerCase();if(t&&t!=="_self")b[i].setAttribute("target","_self");}}catch(e){}}' +
   'bases();document.addEventListener("DOMContentLoaded",bases);})();</script>'
 
 // 응답 본문(latin1)의 인트라넷 절대URL을 프록시 경유 경로로 바꾼다.
