@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { drawSmoothTail, smoothPressure } from '../lib/inkRender.js'
 
 // 손글씨 노트 (애플 메모장 스타일)
 // - 펜슬/마우스로 쓰고, 손가락은 스크롤 전용 (팜 리젝션)
@@ -71,7 +72,7 @@ export default function InkPad({ initialStrokes, onCommit }) {
     if (!pts.length) return
     const rng = mulberry32(s.seed || 1) // 연필 질감 재현용 (획마다 고정)
     if (pts.length === 1) return drawDot(ctx, s, pts[0], rng)
-    for (let i = 1; i < pts.length; i++) drawSegment(ctx, s, pts[i - 1], pts[i], rng)
+    for (let i = 1; i < pts.length; i++) drawSegment(ctx, s, pts, i, rng)
   }
 
   function drawDot(ctx, s, pt, rng) {
@@ -86,14 +87,10 @@ export default function InkPad({ initialStrokes, onCommit }) {
     ctx.fill()
   }
 
-  function drawSegment(ctx, s, a, b, rng) {
-    if (s.tool === 'pencil') return drawPencilSegment(ctx, s, a, b, rng)
-    ctx.beginPath()
-    ctx.moveTo(a.x, a.y)
-    ctx.lineTo(b.x, b.y)
-    ctx.strokeStyle = s.color
-    ctx.lineWidth = Math.max(0.7, s.size * ((b.p ?? 0.5) + 0.5))
-    ctx.stroke()
+  // 펜: 부드러운 곡선 + 필압 보간 (inkRender) / 연필: 입자 질감 유지
+  function drawSegment(ctx, s, pts, i, rng) {
+    if (s.tool === 'pencil') return drawPencilSegment(ctx, s, pts[i - 1], pts[i], rng)
+    drawSmoothTail(ctx, pts, i, s.color, s.size)
   }
 
   // 연필: 흑연 입자를 경로를 따라 뿌리는 스탬프 방식 — 중심은 진하고 가장자리는
@@ -230,8 +227,10 @@ export default function InkPad({ initialStrokes, onCommit }) {
     const ctx = canvasRef.current.getContext('2d')
     for (const ev of events) {
       const p = pos(ev)
-      drawSegment(ctx, stroke, stroke.points[stroke.points.length - 1], p, stroke._rng)
+      // 필압 떨림 완화 — 저장 시점에 섞어 다시 그려도 동일
+      p.p = smoothPressure(stroke.points[stroke.points.length - 1]?.p, p.p)
       stroke.points.push(p)
+      drawSegment(ctx, stroke, stroke.points, stroke.points.length - 1, stroke._rng)
     }
   }
 
