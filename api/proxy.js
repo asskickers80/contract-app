@@ -270,8 +270,8 @@ export default async function handler(req, res) {
     const selfHost = req.headers['x-forwarded-host'] || req.headers.host
     const selfOrigin = selfHost ? `${proto}://${selfHost}` : undefined
 
-    // 진단 패널: 탭 이탈(프레임 탈출) 원인 추적 위해 임시 ON. INTRANET_DIAG=0 이면 끈다.
-    const diag = process.env.INTRANET_DIAG !== '0'
+    // 진단 패널: 문제 추적할 때만 INTRANET_DIAG=1 로 켠다 (평소엔 숨김)
+    const diag = process.env.INTRANET_DIAG === '1'
     // 경로가 /__d/<host>/... 면 그 도메인(api 등)으로 중계. 아니면 primary(success).
     const up = resolveUpstream(path, target)
     const primaryOrigin = new URL(target).origin

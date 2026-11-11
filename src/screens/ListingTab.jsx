@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import CaptureBoard from '../components/CaptureBoard.jsx'
+import IntranetScreen from './IntranetScreen.jsx'
 import { loadCardBoard, saveCardBoard, patchCardBoard, listCardBoards, deleteCardBoard, imageSig } from '../lib/boardStore.js'
 import SyncBanner from '../components/SyncBanner.jsx'
 import { formatPhone, formatComma, parseAmount, formatBizNo } from '../lib/format.js'
@@ -18,7 +19,8 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
     const s = loadUi('listing')
     if (s?.view === 'viewer' && s.boardKey) return 'viewer'
     if (s?.view === 'library') return 'library'
-    return 'home' // home | library | viewer
+    if (s?.view === 'intranet') return 'intranet'
+    return 'home' // home | library | viewer | intranet
   })
   const [boardKey, setBoardKey] = useState(() => (FRESH_LAUNCH ? null : loadUi('listing')?.boardKey ?? null))
   const [initBoard, setInitBoard] = useState(null) // 신규 진입 시 초기 보드 (복원 시엔 저장소에서 로드)
@@ -85,22 +87,79 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
   function closeViewer() {
     setBoardKey(null)
     setInitBoard(null)
-    setView(backTo === 'library' ? 'library' : 'home')
+    setView(backTo === 'library' ? 'library' : backTo === 'intranet' ? 'intranet' : 'home')
   }
 
-  if (view === 'viewer' && boardKey) {
-    return <CaptureViewer boardKey={boardKey} initBoard={initBoard} onBack={closeViewer} active={active} />
+  // ── 회사 전산에서 매물 읽기 — 캡처 없이 페이지 텍스트를 바로 AI 추출 ──
+  const [intraBusy, setIntraBusy] = useState(false)
+  async function handleIntranetRead(doc) {
+    if (intraBusy) return
+    setIntraBusy(true)
+    try {
+      const text = (doc.body?.innerText || '').replace(/\n{3,}/g, '\n\n').trim().slice(0, 20000)
+      if (text.length < 40) throw new Error('읽을 내용이 없어요 — 매물 상세 화면을 띄운 뒤 눌러 주세요')
+      // 1) 페이지 텍스트 → AI 추출 (이미지 OCR보다 정확)
+      const r = await fetchWithTimeout('/api/extract', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text }),
+      })
+      const data = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`)
+      const info = {}
+      for (const [k, v] of Object.entries(data.fields || {})) {
+        if (v !== null && v !== undefined && v !== '') info[k] = v
+      }
+      // 2) 페이지 모습을 보드 배경 이미지로 (실패하면 정보 카드로 대체)
+      let image = null
+      try {
+        const { default: html2canvas } = await import('html2canvas')
+        const canvas = await html2canvas(doc.body, {
+          backgroundColor: '#ffffff', scale: 1, useCORS: true, logging: false,
+          windowWidth: Math.min(1280, doc.documentElement.scrollWidth || 1280),
+        })
+        if (canvas.width > 10 && canvas.height > 10) {
+          image = await downscaleImage(canvas.toDataURL('image/jpeg', 0.85))
+        }
+      } catch { /* 폴백 사용 */ }
+      if (!image) image = infoCardImage(info)
+      // 3) 새 매물카드 시작 — 추출 정보가 이미 있으므로 재추출 없음
+      const key = newBoardKey()
+      const init = { image, notes: [], capturedAt: new Date().toISOString(), info }
+      setBoardKey(key)
+      setInitBoard(init)
+      setBackTo('intranet')
+      setView('viewer')
+      saveCardBoard(key, init).catch(() => {})
+    } catch (err) {
+      alert(`매물 읽기 실패: ${err.message || err}`)
+    } finally {
+      setIntraBusy(false)
+    }
   }
 
-  if (view === 'library') {
-    return <LibraryScreen onOpen={openSaved} onBack={goHome} />
-  }
+  // 전산 탭은 로그인 세션·보던 페이지 유지를 위해 항상 떠 있고(숨김), 다른 화면을 겹쳐 그린다
+  const overlay =
+    view === 'viewer' && boardKey
+      ? <CaptureViewer boardKey={boardKey} initBoard={initBoard} onBack={closeViewer} active={active} />
+      : view === 'library'
+        ? <LibraryScreen onOpen={openSaved} onBack={goHome} />
+        : view === 'home'
+          ? <HomeScreen onNew={openNew} onLibrary={() => setView('library')} onIntranet={() => setView('intranet')} />
+          : null
 
-  return <HomeScreen onNew={openNew} onLibrary={() => setView('library')} />
+  return (
+    <div className="h-full">
+      <div className={view === 'intranet' ? 'h-full' : 'hidden'}>
+        <IntranetScreen onBack={goHome} onRead={handleIntranetRead} busy={intraBusy} />
+      </div>
+      {view !== 'intranet' && <div className="h-full">{overlay}</div>}
+    </div>
+  )
 }
 
-// ── 홈: 신규 / 불러오기 ──────────────────────────────────────
-function HomeScreen({ onNew, onLibrary }) {
+// ── 홈: 신규 / 불러오기 / 회사 전산 ──────────────────────────
+function HomeScreen({ onNew, onLibrary, onIntranet }) {
   const fileRef = useRef()
   // iOS 사진 선택창의 미리보기가 작아 어떤 캡처인지 알기 어려움 (2026-10-09 대표님 보고)
   // → 선택 직후 앱 안에서 크게 보여주고 확인 후 시작한다
@@ -152,6 +211,15 @@ function HomeScreen({ onNew, onLibrary }) {
           <span className="text-4xl">📁</span>
           <span className="text-lg font-bold text-fg">불러오기</span>
           <span className="text-xs text-fg-hint">저장된 캡처 보드를 이어서 편집해요</span>
+        </button>
+
+        <button
+          onClick={onIntranet}
+          className="flex flex-col items-center gap-2 rounded-2xl bg-card px-6 py-8 shadow-card active:opacity-80"
+        >
+          <span className="text-4xl">🖥️</span>
+          <span className="text-lg font-bold text-fg">회사 전산</span>
+          <span className="text-xs text-fg-hint">전산에서 매물을 바로 읽어 캡처 없이 시작해요</span>
         </button>
       </div>
 
@@ -350,6 +418,41 @@ function downscaleImage(dataUrl, max = 2048) {
     img.onerror = () => reject(new Error('이미지를 읽을 수 없어요'))
     img.src = dataUrl
   })
+}
+
+// 전산 페이지를 이미지로 못 만들 때 쓰는 보드 배경 — 추출 정보를 정돈된 카드로 그린다
+function infoCardImage(info) {
+  const c = document.createElement('canvas')
+  c.width = 1400
+  c.height = 1000
+  const x = c.getContext('2d')
+  x.fillStyle = '#ffffff'
+  x.fillRect(0, 0, c.width, c.height)
+  x.fillStyle = '#1d4ed8'
+  x.fillRect(0, 0, c.width, 110)
+  x.fillStyle = '#ffffff'
+  x.font = '700 48px -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif'
+  x.fillText('점포라인 전산 매물', 48, 72)
+  const won = n => (typeof n === 'number' ? `${n.toLocaleString('ko-KR')}원` : n || '-')
+  const rows = [
+    ['상호', info.storeName], ['업종', info.businessType], ['소재지', info.address],
+    ['보증금', won(info.deposit)], ['월세', won(info.monthlyRent)], ['희망권리금', won(info.premium)],
+    ['관리비', won(info.maintenanceFee)], ['전용면적', info.area], ['전화번호', info.phone],
+    ['프랜차이즈', info.franchise],
+  ].filter(([, v]) => v !== null && v !== undefined && v !== '')
+  let y = 200
+  for (const [label, value] of rows) {
+    x.fillStyle = '#6b7280'
+    x.font = '600 34px -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif'
+    x.fillText(label, 48, y)
+    x.fillStyle = '#111827'
+    x.font = '700 40px -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif'
+    x.fillText(String(value), 320, y)
+    x.strokeStyle = '#e5e7eb'
+    x.beginPath(); x.moveTo(48, y + 26); x.lineTo(c.width - 48, y + 26); x.stroke()
+    y += 76
+  }
+  return c.toDataURL('image/jpeg', 0.9)
 }
 
 // ── 캡처 뷰어 ────────────────────────────────────────────────
