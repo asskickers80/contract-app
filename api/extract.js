@@ -39,6 +39,21 @@ const PROMPT = `이 이미지는 상가 매물 정보 페이지의 화면 캡처
 - 이미지에서 확인할 수 없는 항목은 null로 둔다. 절대 추측하거나 지어내지 마라.
 - 최종 답 전에 각 값을 이미지에서 한 번 더 대조 확인하라.`
 
+// 전산 페이지 텍스트에서 직접 추출 — 캡처(이미지)를 거치지 않아 더 정확하다
+const TEXT_PROMPT = `아래는 상가 매물 정보 페이지(회사 전산)의 본문 텍스트다. 정확도가 가장 중요하다.
+텍스트를 꼼꼼히 읽고 다음 항목을 JSON으로 추출하라:
+상호, 업종, 소재지(주소), 사업자등록번호, 보증금, 월세, 희망권리금(권리금), 관리비, 전화번호, 연락처 이름, 전용면적, 프랜차이즈.
+
+규칙:
+- 라벨과 값을 정확히 대응시켜 읽는다. 다른 항목의 값과 절대 섞지 마라.
+- 금액은 원 단위 숫자로 변환한다. 예: "3,000만" → 30000000, "1억 2000" → 120000000, "5,000/300"은 보증금 5000만/월세 300만이다.
+- 사업자등록번호는 숫자 10자리(000-00-00000)다. 전화번호와 혼동하지 마라.
+- 업종은 가장 세부 업종명 하나만 쓴다.
+- 전화번호는 숫자와 하이픈만 남긴다.
+- 전용면적은 '전용면적' 라벨의 값을 단위까지 그대로 쓴다. 대지·연면적과 혼동하지 마라.
+- 프랜차이즈는 브랜드명만. 비어 있거나 개인/직영이면 null.
+- 텍스트에서 확인할 수 없는 항목은 null로 둔다. 절대 추측하거나 지어내지 마라.`
+
 // Vercel 함수 실행 제한 60초 — 기본값(10초)이면 pro가 느릴 때 flash 폴백 전에 끊긴다
 export const config = { api: { bodyParser: { sizeLimit: '4mb' } }, maxDuration: 60 }
 
@@ -79,19 +94,18 @@ export default async function handler(req, res) {
   }
 
   try {
+    const text = typeof req.body?.text === 'string' ? req.body.text.trim() : ''
     const parsed = parseDataUrl(req.body?.image)
-    if (!parsed) {
-      res.status(400).json({ error: 'image(dataURL)가 필요합니다' })
+    if (!parsed && !text) {
+      res.status(400).json({ error: 'image(dataURL) 또는 text가 필요합니다' })
       return
     }
 
+    const parts = parsed
+      ? [{ inline_data: { mime_type: parsed.mimeType, data: parsed.data } }, { text: PROMPT }]
+      : [{ text: `${TEXT_PROMPT}\n\n[페이지 본문]\n${text.slice(0, 20000)}` }]
     const body = JSON.stringify({
-      contents: [{
-        parts: [
-          { inline_data: { mime_type: parsed.mimeType, data: parsed.data } },
-          { text: PROMPT },
-        ],
-      }],
+      contents: [{ parts }],
       generationConfig: {
         response_mime_type: 'application/json',
         response_schema: SCHEMA,
