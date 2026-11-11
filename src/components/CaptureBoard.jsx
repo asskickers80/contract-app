@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { drawSmoothStroke, drawSmoothTail, smoothPressure } from '../lib/inkRender.js'
 
 const COLORS = ['#fef3c7', '#fce7f3', '#dcfce7', '#dbeafe']
 
@@ -152,17 +153,10 @@ function PostItNote({ note, defaultExpanded, wasDragged, onUpdate, onDelete, onD
     return () => cancelAnimationFrame(raf)
   }, [note.mode, expanded, note.w, note.h])
 
+  // 부드러운 펜 렌더러 공용 사용 — 저장 후 다시 열어도 쓸 때와 똑같은 굵기·곡선
   function redrawStroke(ctx, stroke, w, h) {
     if (!stroke || stroke.length < 2) return
-    ctx.beginPath()
-    stroke.forEach((pt, i) => {
-      const x = pt.x * w, y = pt.y * h
-      if (i === 0) ctx.moveTo(x, y)
-      else ctx.lineTo(x, y)
-    })
-    ctx.strokeStyle = '#1a1a1a'
-    ctx.lineWidth = 2
-    ctx.stroke()
+    drawSmoothStroke(ctx, stroke.map(pt => ({ x: pt.x * w, y: pt.y * h, p: pt.p })), '#1a1a1a', 2)
   }
 
   function redrawAll(strokes) {
@@ -230,20 +224,22 @@ function PostItNote({ note, defaultExpanded, wasDragged, onUpdate, onDelete, onD
     if (erasingRef.current) { eraseAt(e); return }
     if (!activeStroke.current) return
     const rect = e.currentTarget.getBoundingClientRect()
-    const cssX = e.clientX - rect.left
-    const cssY = e.clientY - rect.top
-    const prev = activeStroke.current[activeStroke.current.length - 1]
-    activeStroke.current.push({ x: cssX / rect.width, y: cssY / rect.height, p: e.pressure || 0.5 })
-
     const ctx = canvasRef.current?.getContext('2d')
-    if (!ctx) return
-    ctx.beginPath()
-    ctx.moveTo(prev.x * rect.width, prev.y * rect.height)
-    ctx.lineTo(cssX, cssY)
-    ctx.strokeStyle = '#1a1a1a'
-    ctx.lineWidth = Math.max(0.8, (e.pressure || 0.5) * 3.5)
-    ctx.lineCap = 'round'
-    ctx.stroke()
+    // coalesced events + 부드러운 곡선·필압 보간 (펜슬 고빈도 입력 반영)
+    const events = e.nativeEvent?.getCoalescedEvents?.() || [e]
+    for (const ev of events) {
+      const prevP = activeStroke.current[activeStroke.current.length - 1]?.p
+      activeStroke.current.push({
+        x: (ev.clientX - rect.left) / rect.width,
+        y: (ev.clientY - rect.top) / rect.height,
+        p: smoothPressure(prevP, ev.pressure || 0.5),
+      })
+      if (!ctx) continue
+      const n = activeStroke.current.length
+      const win = activeStroke.current.slice(Math.max(0, n - 3))
+        .map(pt => ({ x: pt.x * rect.width, y: pt.y * rect.height, p: pt.p }))
+      drawSmoothTail(ctx, win, win.length - 1, '#1a1a1a', 2)
+    }
   }
 
   function onCanvasPointerUp() {
@@ -271,7 +267,7 @@ function PostItNote({ note, defaultExpanded, wasDragged, onUpdate, onDelete, onD
         className="absolute cursor-pointer touch-none rounded-xl px-5 py-4 shadow-lg"
         style={{
           left: `${note.x * 100}%`, top: `${note.y * 100}%`,
-          backgroundColor: note.color, maxWidth: 300, minWidth: 150, transform: 'rotate(-0.5deg)',
+          backgroundColor: note.color, maxWidth: 300, minWidth: 150,
         }}
         onPointerDown={onDragStart}
         onClick={() => { if (!wasDragged?.()) setExpanded(true) }}
@@ -295,7 +291,7 @@ function PostItNote({ note, defaultExpanded, wasDragged, onUpdate, onDelete, onD
       style={{
         left: `${note.x * 100}%`, top: `${note.y * 100}%`,
         backgroundColor: note.color, width: `${(note.w ?? 0.42) * 100}%`, minWidth: 230,
-        transform: 'rotate(-0.5deg)',
+
       }}
     >
       {/* 헤더 (드래그 영역) */}
