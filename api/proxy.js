@@ -97,27 +97,61 @@ const DIAG_SCRIPT = '<script>(function(){if(window.__diag)return;window.__diag=1
   'window.addEventListener("error",function(e){line("JSERR "+(e.message||""));});' +
   'line("DIAG ready "+location.pathname);})();</script>'
 
-// 초기화 스크립트(ASCII 전용). 페이지 스크립트보다 먼저 처리:
+// 초기화 스크립트(ASCII 전용 — 한글은 \uXXXX 이스케이프). 페이지 스크립트보다 먼저 처리:
 //  (1) document.domain 크래시 방지: 인트라넷이 document.domain="jumpoline.com"을 설정하는데
 //      프록시 주소(vercel.app)에선 SecurityError를 내며 페이지 스크립트가 통째로 멈춘다.
 //      → setter를 무력화. (모든 프레임이 이미 같은 프록시 오리진이라 document.domain 불필요)
-//  (2) 새 창 대응: window.open / target=_blank·이름있는 target 링크는 앱(최상위)으로
-//      postMessage(__intranetOpen) → 앱이 "앱 안의 새 탭(iframe)"으로 연다. 앱 밖 이탈 방지.
-//      폼(POST)의 target은 _self로 바꿔 현재 창에서 제출한다.
-export const FRAME_KEEP_SCRIPT = '<script>(function(){if(window.__fk)return;window.__fk=1;' +
-  'try{Object.defineProperty(document,"domain",{configurable:true,get:function(){return location.hostname;},set:function(){}});}catch(e){}' +
-  'function openTab(u){try{window.top.postMessage({__intranetOpen:String(u||"")},location.origin);}catch(e){}}' +
-  'window.open=function(u){if(u){openTab(u);}return null;};' +
-  'document.addEventListener("click",function(e){var n=e.target;var a=n&&n.closest?n.closest("a[target]"):null;' +
-  'if(!a)return;var t=(a.getAttribute("target")||"").toLowerCase();if(!t||t==="_self")return;' +
-  'var h=a.getAttribute("href")||"";' +
-  'if(h&&h!=="#"&&h.toLowerCase().indexOf("javascript:")!==0){e.preventDefault();e.stopPropagation();openTab(a.href);}' +
-  'else{a.setAttribute("target","_self");}},true);' +
-  'document.addEventListener("submit",function(e){var f=e.target;if(f&&f.tagName==="FORM"){' +
-  'var t=(f.getAttribute("target")||"").toLowerCase();if(t&&t!=="_self")f.setAttribute("target","_self");}},true);' +
-  'function bases(){try{var b=document.getElementsByTagName("base");for(var i=0;i<b.length;i++){' +
-  'var t=(b[i].getAttribute("target")||"").toLowerCase();if(t&&t!=="_self")b[i].setAttribute("target","_self");}}catch(e){}}' +
-  'bases();document.addEventListener("DOMContentLoaded",bases);})();</script>'
+//  (2) 앱 안(APP): 새 창(window.open·target 링크·target 폼 제출·이름 있는 창)을 앱의 "창 탭"으로 보낸다.
+//      이름 있는 창은 재사용(옛 전산이 '매물카드' 창을 계속 같은 이름으로 연다), window.open은
+//      location.href 대입·focus() 등을 받는 대역 객체를 돌려줘 페이지 스크립트가 깨지지 않게 한다.
+//  (3) 앱 밖(새 창으로 빠진 경우): 화면 오른쪽 아래에 [이 매물 읽기] 버튼을 띄운다 —
+//      모든 창에서 읽을 수 있게. 누르면 본문을 넘겨 두고 앱(/app/)으로 이동해 매물카드를 만든다.
+export const FRAME_KEEP_SCRIPT = '<script>' + String.raw`(function(){if(window.__fk)return;window.__fk=1;
+try{Object.defineProperty(document,"domain",{configurable:true,get:function(){return location.hostname;},set:function(){}});}catch(e){}
+var APP=false;try{APP=window.top.location.pathname.indexOf("/app")===0;}catch(e){}
+if(APP){
+var seq=0;
+function msg(o){try{window.top.postMessage(o,location.origin);}catch(e){}}
+function openTab(u,n,ensure){msg({__intranetOpen:String(u||""),name:n||"",ensure:!!ensure});}
+function stub(n){var L={assign:function(v){openTab(v,n);},replace:function(v){openTab(v,n);}};
+Object.defineProperty(L,"href",{get:function(){return "";},set:function(v){openTab(v,n);}});
+return {closed:false,focus:function(){},blur:function(){},close:function(){},location:L,
+document:{open:function(){},write:function(){},writeln:function(){},close:function(){}}};}
+window.open=function(u,n){var nm=(n&&String(n).charAt(0)!=="_")?String(n):"w"+Date.now()+"_"+(seq++);
+openTab(u?u:"about:blank",nm,!u);return stub(nm);};
+document.addEventListener("click",function(e){var n=e.target;var a=n&&n.closest?n.closest("a[target]"):null;
+if(!a)return;var t=(a.getAttribute("target")||"");var tl=t.toLowerCase();if(!t||tl==="_self")return;
+var h=a.getAttribute("href")||"";
+if(h&&h!=="#"&&h.toLowerCase().indexOf("javascript:")!==0){e.preventDefault();e.stopPropagation();
+openTab(a.href,t.charAt(0)==="_"?"":t);}else{a.setAttribute("target","_self");}},true);
+var OS=HTMLFormElement.prototype.submit;
+function route(f){var t=(f.getAttribute("target")||"");var tl=t.toLowerCase();if(!t||tl==="_self")return false;
+var nm=(t.charAt(0)==="_")?"f"+Date.now()+"_"+(seq++):t;f.setAttribute("target",nm);openTab("about:blank",nm,true);return true;}
+document.addEventListener("submit",function(e){var f=e.target;if(!f||f.tagName!=="FORM"||f.__itx)return;
+if(route(f)){e.preventDefault();f.__itx=1;setTimeout(function(){OS.call(f);},250);}},true);
+HTMLFormElement.prototype.submit=function(){var f=this;if(f.__itx)return OS.call(f);
+if(route(f)){f.__itx=1;setTimeout(function(){OS.call(f);},250);return;}return OS.call(f);};
+function bases(){try{var b=document.getElementsByTagName("base");for(var i=0;i<b.length;i++){
+var t=(b[i].getAttribute("target")||"").toLowerCase();if(t&&t!=="_self")b[i].setAttribute("target","_self");}}catch(e){}}
+bases();document.addEventListener("DOMContentLoaded",bases);
+}else{
+function tx(w,d){var t="";try{t=(w.document.body&&w.document.body.innerText)||"";}catch(e){}
+if(d>5)return t;var f=[];try{f=w.document.querySelectorAll("iframe,frame");}catch(e){}
+for(var i=0;i<f.length;i++){try{var cw=f[i].contentWindow;if(cw)t+="\n"+tx(cw,d+1);}catch(e){}}return t;}
+function big(){try{if(window===window.top)return true;
+return (window.innerWidth*window.innerHeight)>=0.35*(window.top.innerWidth*window.top.innerHeight);}catch(e){return false;}}
+function mk(){if(!big()||document.getElementById("__intraRead"))return;
+var b=document.createElement("button");b.id="__intraRead";b.type="button";
+b.textContent="\ud83d\udccb \uc774 \ub9e4\ubb3c \uc77d\uae30";
+b.style.cssText="position:fixed;right:14px;bottom:14px;z-index:2147483647;background:#0b57d0;color:#fff;border:0;border-radius:999px;padding:14px 22px;font:700 16px sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.35)";
+b.onclick=function(){var t=tx(window.top,0).replace(/\n{3,}/g,"\n\n").trim();
+if(t.length<40){alert("\uc77d\uc744 \ub0b4\uc6a9\uc774 \uc5c6\uc5b4\uc694");return;}
+try{localStorage.setItem("contract.intranetPending",JSON.stringify({text:t.slice(0,20000),url:location.href,ts:Date.now()}));}catch(e){alert("storage error");return;}
+window.top.location.href="/app/";};
+(document.body||document.documentElement).appendChild(b);}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",mk);else mk();
+}
+})();` + '</script>'
 
 // 응답 본문(latin1)의 인트라넷 절대URL을 프록시 경유 경로로 바꾼다.
 //  - 주(primary) 도메인(success) → 루트상대('') : 그대로 프록시에 머문다
