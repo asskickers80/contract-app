@@ -2,62 +2,79 @@ import { useEffect, useRef, useState } from 'react'
 
 // 회사 전산(점포라인) 내장 브라우저 — 프록시(api/proxy)를 거쳐 같은 출처가 되므로
 // 앱 안에서 로그인·탐색이 되고, [이 매물 읽기]로 열린 페이지를 바로 AI 추출한다.
-// 새 창 대응: 전산이 window.open·target=_blank로 여는 창을 앱 안의 탭(iframe)으로 받는다.
-// (프록시 주입 스크립트가 __intranetOpen postMessage를 보낸다 — 앱 밖 이탈 방지)
+// 새 창 대응: 전산이 window.open·target 링크·target 폼으로 여는 창을 앱 안의 탭(iframe)으로 받는다.
+//  - 이름 있는 창('매물카드' 등)은 같은 이름이면 그 탭을 재사용한다 (옛 전산의 팝업 방식)
+//  - ensure 요청은 폼 제출용 빈 창을 먼저 확보한다 (이미 있으면 내용을 건드리지 않음)
 const MAX_TABS = 6
+const NAME_OK = /^[\w-]{1,60}$/
 
 export default function IntranetScreen({ onBack, onRead, busy }) {
-  const [tabs, setTabs] = useState([{ id: 1, src: '/' }])
+  const [tabs, setTabsState] = useState([{ id: 1, src: '/', name: '', rev: 0 }])
   const [activeTab, setActiveTab] = useState(1)
   const nextId = useRef(2)
   const frameRefs = useRef({})
+  // 창 목록은 ref가 진실 — 메시지가 연달아 와도(빈 창 생성 직후 location 대입 등) 같은 이름 창이 중복 생성되지 않게
+  const tabsRef = useRef(tabs)
+  function commitTabs(next) {
+    tabsRef.current = next
+    setTabsState(next)
+  }
 
-  // 전산 페이지가 연 새 창 요청 수신 → 앱 안의 새 탭으로
+  // 전산 페이지가 연 새 창 요청 수신 → 앱 안의 탭으로
   useEffect(() => {
     function onMsg(e) {
       if (e.origin !== location.origin) return
-      const url = e.data && e.data.__intranetOpen
-      if (typeof url !== 'string' || !url) return
-      let path
-      try {
-        const u = new URL(url, location.origin)
-        if (u.origin !== location.origin) return // 외부 도메인은 열지 않는다
-        path = u.pathname + u.search
-      } catch { return }
-      if (path.startsWith('/app')) return
-      setTabs(ts => {
-        if (ts.length >= MAX_TABS) {
-          // 창이 너무 많으면 마지막 탭을 재사용
-          const last = ts[ts.length - 1]
-          setActiveTab(last.id)
-          return ts.map(t => (t.id === last.id ? { ...t, src: path } : t))
+      const d = e.data
+      if (!d || typeof d.__intranetOpen !== 'string') return
+      const name = typeof d.name === 'string' && NAME_OK.test(d.name) ? d.name : ''
+      let path = 'about:blank'
+      if (d.__intranetOpen && d.__intranetOpen !== 'about:blank') {
+        try {
+          const u = new URL(d.__intranetOpen, location.origin)
+          if (u.origin !== location.origin) return // 외부 도메인은 열지 않는다
+          path = u.pathname + u.search
+        } catch { return }
+        if (path.startsWith('/app')) return
+      }
+      const cur = tabsRef.current
+      const existing = name ? cur.find(t => t.name === name) : null
+      if (existing) {
+        setActiveTab(existing.id)
+        if (!d.ensure) {
+          commitTabs(cur.map(t => (t.id === existing.id ? { ...t, src: path, rev: t.rev + 1 } : t)))
         }
-        const id = nextId.current++
-        setActiveTab(id)
-        return [...ts, { id, src: path }]
-      })
+        return
+      }
+      if (cur.length >= MAX_TABS) {
+        // 창이 너무 많으면 마지막 탭을 재사용
+        const last = cur[cur.length - 1]
+        setActiveTab(last.id)
+        commitTabs(cur.map(t => (t.id === last.id ? { ...t, src: path, name, rev: t.rev + 1 } : t)))
+        return
+      }
+      const id = nextId.current++
+      setActiveTab(id)
+      commitTabs([...cur, { id, src: path, name, rev: 0 }])
     }
     window.addEventListener('message', onMsg)
     return () => window.removeEventListener('message', onMsg)
   }, [])
 
   function addTab() {
-    setTabs(ts => {
-      if (ts.length >= MAX_TABS) return ts
-      const id = nextId.current++
-      setActiveTab(id)
-      return [...ts, { id, src: '/' }]
-    })
+    const cur = tabsRef.current
+    if (cur.length >= MAX_TABS) return
+    const id = nextId.current++
+    setActiveTab(id)
+    commitTabs([...cur, { id, src: '/', name: '', rev: 0 }])
   }
 
   function closeTab(id) {
-    setTabs(ts => {
-      if (ts.length <= 1) return ts
-      const next = ts.filter(t => t.id !== id)
-      delete frameRefs.current[id]
-      if (activeTab === id) setActiveTab(next[next.length - 1].id)
-      return next
-    })
+    const cur = tabsRef.current
+    if (cur.length <= 1) return
+    const next = cur.filter(t => t.id !== id)
+    delete frameRefs.current[id]
+    if (activeTab === id) setActiveTab(next[next.length - 1].id)
+    commitTabs(next)
   }
 
   function readPage() {
@@ -92,7 +109,7 @@ export default function IntranetScreen({ onBack, onRead, busy }) {
         </button>
       </div>
 
-      {/* 창(탭) 막대 — 전산이 새 창을 열면 여기 쌓인다 */}
+      {/* 창(탭) 막대 — 전산이 새 창을 열면 여기 쌓인다. 어느 창이든 [이 매물 읽기]는 보고 있는 창을 읽는다 */}
       <div className="flex items-center gap-1.5 overflow-x-auto px-4 pb-2">
         {tabs.map((t, i) => (
           <span key={t.id} className={`flex shrink-0 items-center overflow-hidden rounded-full text-xs font-bold ${
@@ -117,7 +134,8 @@ export default function IntranetScreen({ onBack, onRead, busy }) {
       <div className="relative min-h-0 flex-1">
         {tabs.map(t => (
           <iframe
-            key={t.id}
+            key={`${t.id}-${t.rev}`}
+            name={t.name || undefined}
             ref={el => { if (el) frameRefs.current[t.id] = el }}
             src={t.src}
             title={`회사 전산 창 ${t.id}`}

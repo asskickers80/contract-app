@@ -123,7 +123,10 @@ export function buildTextOverlay(contract, signedDate, imgW, imgH) {
     })
   }
 
-  return canvas.toDataURL('image/png')
+  const url = canvas.toDataURL('image/png')
+  canvas.width = 0 // 큰 캔버스(약 32MB)는 쓰고 나서 즉시 해제 — iPad Safari 메모리 부족으로 하단이 깨지는 것 방지
+  canvas.height = 0
+  return url
 }
 
 // 손글씨 PNG 전처리 — 서명판의 투명 여백을 잘라 잉크 부분만 남기고(크게 들어가도록),
@@ -161,7 +164,12 @@ async function prepareInk(dataUrl) {
   for (const [dx, dy] of offsets) {
     octx.drawImage(c, pad - x0 + dx, pad - y0 + dy)
   }
-  return out.toDataURL('image/png')
+  const png = out.toDataURL('image/png')
+  c.width = 0
+  c.height = 0
+  out.width = 0
+  out.height = 0
+  return png
 }
 
 export async function generateContractPdf(contract, images, signedDate) {

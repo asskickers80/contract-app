@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import CaptureBoard from '../components/CaptureBoard.jsx'
 import IntranetScreen from './IntranetScreen.jsx'
+import { collectPageText, pickCaptureDoc, takeIntranetPending } from '../lib/intranetText.js'
 import { loadCardBoard, saveCardBoard, patchCardBoard, listCardBoards, deleteCardBoard, imageSig } from '../lib/boardStore.js'
 import SyncBanner from '../components/SyncBanner.jsx'
 import { formatPhone, formatComma, parseAmount, formatBizNo } from '../lib/format.js'
@@ -91,12 +92,17 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
   }
 
   // ── 회사 전산에서 매물 읽기 — 캡처 없이 페이지 텍스트를 바로 AI 추출 ──
+  // doc: 앱 안 창에서 읽을 때(화면 이미지까지 생성) / text만: 앱 밖 새 창에서 넘겨 준 본문(정보 카드 이미지)
   const [intraBusy, setIntraBusy] = useState(false)
-  async function handleIntranetRead(doc) {
-    if (intraBusy) return
+  const intraBusyRef = useRef(false)
+  async function readIntranet({ doc = null, text: givenText = null }) {
+    if (intraBusyRef.current) return
+    intraBusyRef.current = true
     setIntraBusy(true)
     try {
-      const text = (doc.body?.innerText || '').replace(/\n{3,}/g, '\n\n').trim().slice(0, 20000)
+      // 옛 전산은 frameset/중첩 iframe 구조 — 모든 하위 프레임의 본문을 모아서 읽는다
+      const raw = givenText != null ? givenText : collectPageText(doc)
+      const text = raw.replace(/\n{3,}/g, '\n\n').trim().slice(0, 20000)
       if (text.length < 40) throw new Error('읽을 내용이 없어요 — 매물 상세 화면을 띄운 뒤 눌러 주세요')
       // 1) 페이지 텍스트 → AI 추출 (이미지 OCR보다 정확)
       const r = await fetchWithTimeout('/api/extract', {
@@ -111,32 +117,48 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
         if (v !== null && v !== undefined && v !== '') info[k] = v
       }
       // 2) 페이지 모습을 보드 배경 이미지로 (실패하면 정보 카드로 대체)
+      //    높이 상한 3200px + 캔버스 즉시 해제 — 긴 전산 화면이 iPad 메모리를 잡아먹어 이후 화면이 깨지는 것 방지
       let image = null
-      try {
-        const { default: html2canvas } = await import('html2canvas')
-        const canvas = await html2canvas(doc.body, {
-          backgroundColor: '#ffffff', scale: 1, useCORS: true, logging: false,
-          windowWidth: Math.min(1280, doc.documentElement.scrollWidth || 1280),
-        })
-        if (canvas.width > 10 && canvas.height > 10) {
-          image = await downscaleImage(canvas.toDataURL('image/jpeg', 0.85))
-        }
-      } catch { /* 폴백 사용 */ }
+      if (doc) {
+        try {
+          const target = pickCaptureDoc(doc)
+          const { default: html2canvas } = await import('html2canvas')
+          const canvas = await html2canvas(target.body, {
+            backgroundColor: '#ffffff', scale: 1, useCORS: true, logging: false,
+            windowWidth: Math.min(1280, target.documentElement.scrollWidth || 1280),
+            height: Math.min(3200, target.documentElement.scrollHeight || 3200),
+          })
+          if (canvas.width > 10 && canvas.height > 10) {
+            const url = canvas.toDataURL('image/jpeg', 0.85)
+            canvas.width = 0
+            canvas.height = 0
+            image = await downscaleImage(url)
+          }
+        } catch { /* 폴백 사용 */ }
+      }
       if (!image) image = infoCardImage(info)
       // 3) 새 매물카드 시작 — 추출 정보가 이미 있으므로 재추출 없음
       const key = newBoardKey()
       const init = { image, notes: [], capturedAt: new Date().toISOString(), info }
       setBoardKey(key)
       setInitBoard(init)
-      setBackTo('intranet')
+      setBackTo(doc ? 'intranet' : 'home')
       setView('viewer')
       saveCardBoard(key, init).catch(() => {})
     } catch (err) {
       alert(`매물 읽기 실패: ${err.message || err}`)
     } finally {
+      intraBusyRef.current = false
       setIntraBusy(false)
     }
   }
+  const handleIntranetRead = doc => readIntranet({ doc })
+
+  // 앱 밖 새 창의 [이 매물 읽기]로 넘어온 본문이 있으면 이어서 매물카드를 만든다
+  useEffect(() => {
+    const p = takeIntranetPending()
+    if (p) readIntranet({ text: p.text })
+  }, [])
 
   // 전산 탭은 로그인 세션·보던 페이지 유지를 위해 항상 떠 있고(숨김), 다른 화면을 겹쳐 그린다
   const overlay =
@@ -154,6 +176,11 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
         <IntranetScreen onBack={goHome} onRead={handleIntranetRead} busy={intraBusy} />
       </div>
       {view !== 'intranet' && <div className="h-full">{overlay}</div>}
+      {intraBusy && view !== 'intranet' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <p className="rounded-2xl bg-card px-6 py-4 text-sm font-extrabold text-fg shadow-card">전산 매물 읽는 중…</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -413,7 +440,10 @@ function downscaleImage(dataUrl, max = 2048) {
       c.width = Math.round(img.width * scale)
       c.height = Math.round(img.height * scale)
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height)
-      resolve(c.toDataURL('image/jpeg', 0.9))
+      const out = c.toDataURL('image/jpeg', 0.9)
+      c.width = 0 // iPad Safari는 쓴 캔버스 메모리를 바로 돌려주지 않는다 — 즉시 해제
+      c.height = 0
+      resolve(out)
     }
     img.onerror = () => reject(new Error('이미지를 읽을 수 없어요'))
     img.src = dataUrl
@@ -452,7 +482,10 @@ function infoCardImage(info) {
     x.beginPath(); x.moveTo(48, y + 26); x.lineTo(c.width - 48, y + 26); x.stroke()
     y += 76
   }
-  return c.toDataURL('image/jpeg', 0.9)
+  const out = c.toDataURL('image/jpeg', 0.9)
+  c.width = 0
+  c.height = 0
+  return out
 }
 
 // ── 캡처 뷰어 ────────────────────────────────────────────────
