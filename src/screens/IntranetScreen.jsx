@@ -1,86 +1,147 @@
 import { useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 
 // 회사 전산(점포라인) 내장 브라우저 — 프록시(api/proxy)를 거쳐 같은 출처가 되므로
 // 앱 안에서 로그인·탐색이 되고, [이 매물 읽기]로 열린 페이지를 바로 AI 추출한다.
-// 새 창 대응: 전산이 window.open·target 링크·target 폼으로 여는 창을 앱 안의 탭(iframe)으로 받는다.
-//  - 이름 있는 창('매물카드' 등)은 같은 이름이면 그 탭을 재사용한다 (옛 전산의 팝업 방식)
-//  - ensure 요청은 폼 제출용 빈 창을 먼저 확보한다 (이미 있으면 내용을 건드리지 않음)
+//
+// 새 창은 앱 안의 "창 탭"(iframe)으로 받되 진짜 브라우저 창처럼 동작해야 한다:
+// 옛 전산의 매물카드는 팝업이고, 그 안의 주소검색 팝업이 opener의 입력칸에 값을 넣고 window.close()로 닫히며,
+// 저장 후에는 opener를 갱신하고 스스로 닫는다. 프록시가 주입한 스크립트가 window.__intranet(아래)을 직접 호출한다
+// (같은 출처라 동기 호출 가능 → window.open이 진짜 창을 즉시 돌려줄 수 있다).
 const MAX_TABS = 6
-const NAME_OK = /^[\w-]{1,60}$/
+
+// 새 창에 열 주소 정리 — 같은 출처는 경로만, 외부 http(s)는 그대로, javascript: 등은 거부
+function normalizeUrl(u) {
+  const s = String(u || '').trim()
+  if (!s || s === 'about:blank') return 'about:blank'
+  if (/^javascript:/i.test(s)) return null
+  try {
+    const x = new URL(s, location.origin)
+    if (!/^https?:$/.test(x.protocol)) return null
+    if (x.origin === location.origin) return x.pathname.startsWith('/app') ? null : x.pathname + x.search + x.hash
+    return x.href
+  } catch {
+    return null
+  }
+}
 
 export default function IntranetScreen({ onBack, onRead, busy }) {
-  const [tabs, setTabsState] = useState([{ id: 1, src: '/', name: '', rev: 0 }])
+  const [tabs, setTabsState] = useState([{ id: 1, src: '/', name: '' }])
   const [activeTab, setActiveTab] = useState(1)
   const nextId = useRef(2)
   const frameRefs = useRef({})
+  const openers = useRef({}) // 창 이름 → 그 창을 연 window (팝업의 opener)
   const [loading, setLoading] = useState({ 1: true }) // 창별 불러오는 중 표시 — 느릴 때 멈춘 것처럼 보이지 않게
   const markLoading = (id, v) => setLoading(l => (l[id] === v ? l : { ...l, [id]: v }))
-  // 창 목록은 ref가 진실 — 메시지가 연달아 와도(빈 창 생성 직후 location 대입 등) 같은 이름 창이 중복 생성되지 않게
+  // 창 목록·선택 창은 ref가 진실 — 프록시 스크립트가 동기로 호출하므로 state 갱신을 기다리지 않는다
   const tabsRef = useRef(tabs)
+  const activeRef = useRef(1)
   function commitTabs(next) {
     tabsRef.current = next
     setTabsState(next)
   }
+  function selectTab(id) {
+    activeRef.current = id
+    setActiveTab(id)
+  }
 
-  // 전산 페이지가 연 새 창 요청 수신 → 앱 안의 탭으로
+  // 어떤 창(window)이 속한 탭 찾기 — 중첩 프레임이면 위로 올라가며 탭의 루트 프레임을 찾는다
+  function tabOfWindow(w) {
+    let r = w
+    for (let i = 0; i < 8 && r; i++) {
+      const hit = tabsRef.current.find(t => frameRefs.current[t.id]?.contentWindow === r)
+      if (hit) return hit.id
+      if (!r.parent || r.parent === r) break
+      r = r.parent
+    }
+    return null
+  }
+
+  function removeTab(id, backId) {
+    const cur = tabsRef.current
+    if (cur.length <= 1) return
+    const gone = cur.find(t => t.id === id)
+    const next = cur.filter(t => t.id !== id)
+    delete frameRefs.current[id]
+    if (gone?.name) delete openers.current[gone.name]
+    const target = next.find(t => t.id === backId) || next.find(t => t.id === activeRef.current) || next[next.length - 1]
+    selectTab(target.id)
+    commitTabs(next)
+  }
+
+  // 프록시가 주입한 스크립트가 쓰는 창 API (같은 출처, 동기)
   useEffect(() => {
-    function onMsg(e) {
-      if (e.origin !== location.origin) return
-      const d = e.data
-      if (!d || typeof d.__intranetOpen !== 'string') return
-      const name = typeof d.name === 'string' && NAME_OK.test(d.name) ? d.name : ''
-      let path = 'about:blank'
-      if (d.__intranetOpen && d.__intranetOpen !== 'about:blank') {
-        try {
-          const u = new URL(d.__intranetOpen, location.origin)
-          if (u.origin !== location.origin) return // 외부 도메인은 열지 않는다
-          path = u.pathname + u.search
-        } catch { return }
-        if (path.startsWith('/app')) return
-      }
+    // 창 열기(또는 같은 이름 창 재사용): 진짜 창(window)을 즉시 돌려준다. url이 about:blank면 이동하지 않는다
+    function open(url, name, openerWin) {
+      const src = normalizeUrl(url)
+      if (src === null) return null
+      if (name && openerWin) openers.current[name] = openerWin
       const cur = tabsRef.current
       const existing = name ? cur.find(t => t.name === name) : null
       if (existing) {
-        setActiveTab(existing.id)
-        if (!d.ensure) {
+        flushSync(() => selectTab(existing.id))
+        const w = frameRefs.current[existing.id]?.contentWindow || null
+        if (w && src !== 'about:blank') {
           markLoading(existing.id, true)
-          commitTabs(cur.map(t => (t.id === existing.id ? { ...t, src: path, rev: t.rev + 1 } : t)))
+          try { w.location.href = src } catch { /* 이동 불가 */ }
         }
-        return
+        return w
       }
       if (cur.length >= MAX_TABS) {
         // 창이 너무 많으면 마지막 탭을 재사용
         const last = cur[cur.length - 1]
-        setActiveTab(last.id)
-        markLoading(last.id, true)
-        commitTabs(cur.map(t => (t.id === last.id ? { ...t, src: path, name, rev: t.rev + 1 } : t)))
-        return
+        flushSync(() => {
+          commitTabs(cur.map(t => (t.id === last.id ? { ...t, name: name || '' } : t)))
+          selectTab(last.id)
+        })
+        const w = frameRefs.current[last.id]?.contentWindow || null
+        if (w && src !== 'about:blank') {
+          markLoading(last.id, true)
+          try { w.location.href = src } catch { /* 이동 불가 */ }
+        }
+        return w
       }
       const id = nextId.current++
-      setActiveTab(id)
-      markLoading(id, path !== 'about:blank')
-      commitTabs([...cur, { id, src: path, name, rev: 0 }])
+      flushSync(() => {
+        markLoading(id, src !== 'about:blank')
+        commitTabs([...cur, { id, src, name: name || '' }])
+        selectTab(id)
+      })
+      return frameRefs.current[id]?.contentWindow || null
     }
-    window.addEventListener('message', onMsg)
-    return () => window.removeEventListener('message', onMsg)
+    // 이름 있는 창을 앞으로 (이미 열려 있는 창에 window.open을 다시 했을 때)
+    function activate(name) {
+      const t = tabsRef.current.find(x => x.name === name)
+      if (t) selectTab(t.id)
+    }
+    // window.close() — 팝업 탭을 닫고 그 창을 연 창으로 돌아간다
+    function close(name) {
+      setTimeout(() => {
+        const tab = tabsRef.current.find(t => t.name === name)
+        if (!tab || tabsRef.current.length <= 1) return
+        const op = openers.current[name]
+        removeTab(tab.id, op ? tabOfWindow(op) : null)
+      }, 0)
+    }
+    window.__intranetOpeners = openers.current
+    window.__intranet = { open, activate, close }
+    return () => {
+      delete window.__intranet
+      delete window.__intranetOpeners
+    }
   }, [])
 
   function addTab() {
     const cur = tabsRef.current
     if (cur.length >= MAX_TABS) return
     const id = nextId.current++
-    setActiveTab(id)
     markLoading(id, true)
-    commitTabs([...cur, { id, src: '/', name: '', rev: 0 }])
+    commitTabs([...cur, { id, src: '/', name: '' }])
+    selectTab(id)
   }
 
   function closeTab(id) {
-    const cur = tabsRef.current
-    if (cur.length <= 1) return
-    const next = cur.filter(t => t.id !== id)
-    delete frameRefs.current[id]
-    if (activeTab === id) setActiveTab(next[next.length - 1].id)
-    commitTabs(next)
+    removeTab(id, null)
   }
 
   function readPage() {
@@ -146,8 +207,8 @@ export default function IntranetScreen({ onBack, onRead, busy }) {
       <div className="relative min-h-0 flex-1">
         {tabs.map(t => (
           <iframe
-            key={`${t.id}-${t.rev}`}
-            name={t.name || undefined}
+            key={t.id}
+            name={t.name || `__tab${t.id}`}
             ref={el => { if (el) frameRefs.current[t.id] = el }}
             src={t.src}
             onLoad={() => markLoading(t.id, false)}

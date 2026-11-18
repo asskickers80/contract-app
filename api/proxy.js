@@ -113,9 +113,12 @@ const DIAG_SCRIPT = '<script>(function(){if(window.__diag)return;window.__diag=1
 //  (1) document.domain 크래시 방지: 인트라넷이 document.domain="jumpoline.com"을 설정하는데
 //      프록시 주소(vercel.app)에선 SecurityError를 내며 페이지 스크립트가 통째로 멈춘다.
 //      → setter를 무력화. (모든 프레임이 이미 같은 프록시 오리진이라 document.domain 불필요)
-//  (2) 앱 안(APP): 새 창(window.open·target 링크·target 폼 제출·이름 있는 창)을 앱의 "창 탭"으로 보낸다.
-//      이름 있는 창은 재사용(옛 전산이 '매물카드' 창을 계속 같은 이름으로 연다), window.open은
-//      location.href 대입·focus() 등을 받는 대역 객체를 돌려줘 페이지 스크립트가 깨지지 않게 한다.
+//  (2) 앱 안(APP): 새 창을 앱의 "창 탭"으로 받되 진짜 브라우저 창처럼 동작시킨다.
+//      - window.open은 진짜 창(탭 iframe의 window)을 즉시 돌려준다 → document 접근·location 대입·focus() 모두 동작
+//      - 팝업에 opener를 연결하고 window.close()로 탭이 닫힌다 (주소검색 팝업이 opener 입력칸에 값을 넣고 스스로 닫는 전산 방식)
+//      - 이름 있는 창은 재사용, 페이지 안에 이미 있는 이름의 프레임(숨은 iframe 저장 등)은 가로채지 않고 브라우저에 맡긴다
+//      - 폼 제출은 가로채지 않는다(페이지의 onsubmit 검증 유지) — 대상 창만 미리 확보한다
+//      - _top/_parent는 앱 전체가 아니라 이 창 탭 안에서 이동
 //  (3) 앱 밖(새 창으로 빠진 경우): 화면 오른쪽 아래에 [이 매물 읽기] 버튼을 띄운다 —
 //      모든 창에서 읽을 수 있게. 누르면 본문을 넘겨 두고 앱(/app/)으로 이동해 매물카드를 만든다.
 export const FRAME_KEEP_SCRIPT = '<script>' + String.raw`(function(){if(window.__fk)return;window.__fk=1;
@@ -123,26 +126,44 @@ try{Object.defineProperty(document,"domain",{configurable:true,get:function(){re
 var APP=false;try{APP=window.top.location.pathname.indexOf("/app")===0;}catch(e){}
 if(APP){
 var seq=0;
-function msg(o){try{window.top.postMessage(o,location.origin);}catch(e){}}
-function openTab(u,n,ensure){msg({__intranetOpen:String(u||""),name:n||"",ensure:!!ensure});}
-function stub(n){var L={assign:function(v){openTab(v,n);},replace:function(v){openTab(v,n);}};
-Object.defineProperty(L,"href",{get:function(){return "";},set:function(v){openTab(v,n);}});
-return {closed:false,focus:function(){},blur:function(){},close:function(){},location:L,
-document:{open:function(){},write:function(){},writeln:function(){},close:function(){}}};}
-window.open=function(u,n){var nm=(n&&String(n).charAt(0)!=="_")?String(n):"w"+Date.now()+"_"+(seq++);
-openTab(u?u:"about:blank",nm,!u);return stub(nm);};
-document.addEventListener("click",function(e){var n=e.target;var a=n&&n.closest?n.closest("a[target]"):null;
-if(!a)return;var t=(a.getAttribute("target")||"");var tl=t.toLowerCase();if(!t||tl==="_self")return;
+function T(){try{return window.top.__intranet||null;}catch(e){return null;}}
+function nmOf(n){return (n&&String(n).charAt(0)!=="_")?String(n):"w"+Date.now()+"_"+(seq++);}
+function hn(w,n,d){if(d>6)return false;try{if(w.name===n)return true;for(var i=0;i<w.frames.length;i++){if(hn(w.frames[i],n,d+1))return true;}}catch(e){}return false;}
+function hasNamed(n){return hn(window.top,n,0);}
+function rootWin(){var r=window;try{while(r.parent&&r.parent!==window.top&&r.parent!==r)r=r.parent;}catch(e){}return r;}
+var NAME=window.name||"";
+if(window.parent===window.top&&NAME&&NAME.indexOf("__tab")!==0){
+try{var OP=window.top.__intranetOpeners&&window.top.__intranetOpeners[NAME];
+if(OP){Object.defineProperty(window,"opener",{configurable:true,get:function(){return OP;}});}}catch(e){}
+window.close=function(){var t=T();if(t)t.close(NAME);};
+}
+var NO=window.open;
+window.open=function(u,n){var t=T();if(!t)return NO.apply(window,arguments);
+var ns=(n==null||n==="")?"":String(n);var nl=ns.toLowerCase();var uu=(u==null)?"":u;
+if(nl==="_self")return NO.call(window,uu,"_self");
+if(nl==="_top"||(nl==="_parent"&&window.parent===window.top))return NO.call(window,uu,rootWin().name);
+if(nl==="_parent")return NO.call(window,uu,"_parent");
+if(ns&&ns.charAt(0)!=="_"&&hasNamed(ns)){var w=NO.call(window,uu,ns);t.activate(ns);return w;}
+return t.open(u?String(u):"about:blank",nmOf(ns),window);};
+document.addEventListener("click",function(e){var n=e.target;var a=n&&n.closest?n.closest("a[target],area[target]"):null;
+if(!a)return;var t=a.getAttribute("target")||"";var tl=t.toLowerCase();if(!t||tl==="_self")return;
 var h=a.getAttribute("href")||"";
-if(h&&h!=="#"&&h.toLowerCase().indexOf("javascript:")!==0){e.preventDefault();e.stopPropagation();
-openTab(a.href,t.charAt(0)==="_"?"":t);}else{a.setAttribute("target","_self");}},true);
+if(!h||h==="#"||h.toLowerCase().indexOf("javascript:")===0){a.setAttribute("target","_self");return;}
+if(tl==="_top"||(tl==="_parent"&&window.parent===window.top)){a.setAttribute("target",rootWin().name);return;}
+if(tl==="_parent")return;
+if(t.charAt(0)!=="_"&&hasNamed(t))return;
+var tt=T();if(!tt)return;
+e.preventDefault();e.stopPropagation();tt.open(a.href,nmOf(t),window);},true);
+function route(f){var t=f.getAttribute("target")||"";var tl=t.toLowerCase();if(!t||tl==="_self")return;
+if(tl==="_top"||(tl==="_parent"&&window.parent===window.top)){f.setAttribute("target",rootWin().name);return;}
+if(tl==="_parent")return;
+var tt=T();if(!tt)return;
+if(tl==="_blank"){var nm="f"+Date.now()+"_"+(seq++);tt.open("about:blank",nm,window);f.setAttribute("target",nm);return;}
+if(hasNamed(t))return;
+tt.open("about:blank",t,window);}
+document.addEventListener("submit",function(e){if(e.defaultPrevented)return;var f=e.target;if(f&&f.tagName==="FORM"){try{route(f);}catch(x){}}},false);
 var OS=HTMLFormElement.prototype.submit;
-function route(f){var t=(f.getAttribute("target")||"");var tl=t.toLowerCase();if(!t||tl==="_self")return false;
-var nm=(t.charAt(0)==="_")?"f"+Date.now()+"_"+(seq++):t;f.setAttribute("target",nm);openTab("about:blank",nm,true);return true;}
-document.addEventListener("submit",function(e){var f=e.target;if(!f||f.tagName!=="FORM"||f.__itx)return;
-if(route(f)){e.preventDefault();f.__itx=1;setTimeout(function(){OS.call(f);},250);}},true);
-HTMLFormElement.prototype.submit=function(){var f=this;if(f.__itx)return OS.call(f);
-if(route(f)){f.__itx=1;setTimeout(function(){OS.call(f);},250);return;}return OS.call(f);};
+HTMLFormElement.prototype.submit=function(){try{route(this);}catch(x){}return OS.call(this);};
 function bases(){try{var b=document.getElementsByTagName("base");for(var i=0;i<b.length;i++){
 var t=(b[i].getAttribute("target")||"").toLowerCase();if(t&&t!=="_self")b[i].setAttribute("target","_self");}}catch(e){}}
 bases();document.addEventListener("DOMContentLoaded",bases);
