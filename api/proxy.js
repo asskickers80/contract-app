@@ -33,6 +33,18 @@ export function rewriteLocation(location, targetOrigin) {
   return location // 상대경로/외부링크는 그대로
 }
 
+// 정적 파일은 브라우저에 30분 캐시 — 프록시(서버리스)를 매번 왕복하지 않게 (전산 속도 개선)
+// private: 공용 CDN에는 캐시하지 않는다(로그인이 필요한 이미지가 다른 사람에게 가지 않게)
+export const STATIC_EXT = /\.(?:js|css|png|jpe?g|gif|svg|ico|webp|woff2?|ttf|otf|eot)(?:\?|$)/i
+export function applyStaticCache(headers, method, status, path) {
+  if (method !== 'GET' || status !== 200 || !STATIC_EXT.test(path || '')) return
+  const cc = String(headers['cache-control'] || '')
+  if (/max-age=\d{3,}|immutable/i.test(cc)) return // 원본이 이미 길게 캐시하라고 한 것은 그대로
+  headers['cache-control'] = 'private, max-age=1800'
+  delete headers.pragma
+  delete headers.expires
+}
+
 // 대상 URL 조립 — __path(원본 경로 + 쿼리)를 INTRANET_TARGET에 붙인다
 export function buildTargetUrl(target, rawPath) {
   const base = target.replace(/\/$/, '')
@@ -135,18 +147,42 @@ function bases(){try{var b=document.getElementsByTagName("base");for(var i=0;i<b
 var t=(b[i].getAttribute("target")||"").toLowerCase();if(t&&t!=="_self")b[i].setAttribute("target","_self");}}catch(e){}}
 bases();document.addEventListener("DOMContentLoaded",bases);
 }else{
-function tx(w,d){var t="";try{t=(w.document.body&&w.document.body.innerText)||"";}catch(e){}
-if(d>5)return t;var f=[];try{f=w.document.querySelectorAll("iframe,frame");}catch(e){}
-for(var i=0;i<f.length;i++){try{var cw=f[i].contentWindow;if(cw)t+="\n"+tx(cw,d+1);}catch(e){}}return t;}
+var SK={SCRIPT:1,STYLE:1,NOSCRIPT:1,TEMPLATE:1,HEAD:1,LINK:1,META:1};
+var BK={DIV:1,P:1,TR:1,LI:1,UL:1,OL:1,TABLE:1,TBODY:1,THEAD:1,TFOOT:1,H1:1,H2:1,H3:1,H4:1,H5:1,H6:1,BR:1,HR:1,SECTION:1,ARTICLE:1,FORM:1,DL:1,DT:1,DD:1,FIELDSET:1,LEGEND:1,CAPTION:1,HEADER:1,FOOTER:1,NAV:1,CENTER:1};
+var SI={button:1,submit:1,reset:1,image:1,file:1,password:1};
+function ct(el){var g=el.tagName;
+if(g==="INPUT"){var t=(el.type||"text").toLowerCase();if(SI[t])return "";
+if(t==="checkbox"||t==="radio")return el.checked?"[\uc120\ud0dd\ub428"+(el.value&&el.value!=="on"?": "+el.value:"")+"]":"";
+var v=(el.value||"").trim();
+if(t==="hidden"){var n=el.name||el.id||"";if(!n||v.length>100||/view|token|csrf|auth|state/i.test(n))return "";return v?"[\uac12("+n+"): "+v+"]":"";}
+return v?"[\uac12: "+v+"]":"";}
+if(g==="TEXTAREA"){var x=(el.value||"").trim();return x?"[\uac12: "+x+"]":"";}
+if(g==="SELECT"){var o=el.options&&el.options[el.selectedIndex];var s=o&&(o.text||"").trim();return s?"[\uc120\ud0dd: "+s+"]":"";}
+return "";}
+function wk(n,vw,vs,B,dp){
+if(n.nodeType===3){var tt=(n.nodeValue||"").replace(/\s+/g," ").trim();if(tt)B[vs?0:1].push(tt," ");return;}
+if(n.nodeType!==1)return;var g=n.tagName;if(SK[g]||n.id==="__intraRead")return;
+var v=vs;if(v){try{var cs=vw.getComputedStyle(n);if(cs.display==="none"||cs.visibility==="hidden")v=false;}catch(e){}}
+var b=B[v?0:1];
+if(g==="IFRAME"||g==="FRAME"){if(dp<5){try{var d=n.contentDocument;if(d&&d.body){b.push("\n");wk(d.documentElement,d.defaultView,v,B,dp+1);b.push("\n");}}catch(e){}}return;}
+var c=ct(n);if(c){b.push(c," ");return;}
+if(g==="SELECT"||g==="INPUT"||g==="TEXTAREA")return;
+var bl=BK[g];if(bl)b.push("\n");
+for(var i=0;i<n.childNodes.length;i++)wk(n.childNodes[i],vw,v,B,dp);
+if(g==="TD"||g==="TH")b.push(" | ");if(bl)b.push("\n");}
+function ty(a){return a.join("").replace(/[ \t]+/g," ").replace(/ ?\n ?/g,"\n").replace(/\n{3,}/g,"\n\n").trim();}
+function tx(w){var d=w.document;if(!d||!d.documentElement)return "";var B=[[],[]];
+try{wk(d.documentElement,w,true,B,0);}catch(e){}
+var vi=ty(B[0]),hi=ty(B[1]).slice(0,8000);return hi?vi+"\n\n[\uc228\uaca8\uc9c4 \uc601\uc5ed]\n"+hi:vi;}
 function big(){try{if(window===window.top)return true;
 return (window.innerWidth*window.innerHeight)>=0.35*(window.top.innerWidth*window.top.innerHeight);}catch(e){return false;}}
 function mk(){if(!big()||document.getElementById("__intraRead"))return;
 var b=document.createElement("button");b.id="__intraRead";b.type="button";
 b.textContent="\ud83d\udccb \uc774 \ub9e4\ubb3c \uc77d\uae30";
 b.style.cssText="position:fixed;right:14px;bottom:14px;z-index:2147483647;background:#0b57d0;color:#fff;border:0;border-radius:999px;padding:14px 22px;font:700 16px sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.35)";
-b.onclick=function(){var t=tx(window.top,0).replace(/\n{3,}/g,"\n\n").trim();
+b.onclick=function(){var t=tx(window.top);
 if(t.length<40){alert("\uc77d\uc744 \ub0b4\uc6a9\uc774 \uc5c6\uc5b4\uc694");return;}
-try{localStorage.setItem("contract.intranetPending",JSON.stringify({text:t.slice(0,20000),url:location.href,ts:Date.now()}));}catch(e){alert("storage error");return;}
+try{localStorage.setItem("contract.intranetPending",JSON.stringify({text:t.slice(0,30000),url:location.href,ts:Date.now()}));}catch(e){alert("storage error");return;}
 window.top.location.href="/app/";};
 (document.body||document.documentElement).appendChild(b);}
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",mk);else mk();
@@ -252,6 +288,8 @@ export async function proxyRequest({ target, method, path, headers, body, selfOr
     if (lk === 'location') { outHeaders[key] = rewriteUrls(value, originRef); return }
     outHeaders[key] = value
   })
+
+  applyStaticCache(outHeaders, method, res.status, path)
 
   let bodyBuf = Buffer.from(await res.arrayBuffer())
 

@@ -21,6 +21,11 @@ const SCHEMA = {
     ownerName: { type: 'STRING', nullable: true, description: '연락처 이름/담당자' },
     area: { type: 'STRING', nullable: true, description: "전용면적 — 단위 포함 그대로, 예: '39.7㎡ (12.0평)'" },
     franchise: { type: 'STRING', nullable: true, description: '프랜차이즈 칸의 브랜드명. 비어 있거나 개인이면 null' },
+    // 광고작성(매물작업) 10~13번용 — 전산 텍스트에 있을 때만 채운다
+    facility: { type: 'STRING', nullable: true, description: '시설 상태: 인테리어·집기·설비·시설권리·철거 여부 등 시설 관련 내용' },
+    revenue: { type: 'STRING', nullable: true, description: '매출과 수익: 월매출·순수익·원가율 등 (원문 숫자 그대로)' },
+    strengths: { type: 'STRING', nullable: true, description: '특장점: 입지·영업·상권 강점, 추천 포인트' },
+    notes: { type: 'STRING', nullable: true, description: '특이사항 및 매도사유(양도 사유 포함)' },
   },
 }
 
@@ -40,21 +45,25 @@ const PROMPT = `이 이미지는 상가 매물 정보 페이지의 화면 캡처
 - 최종 답 전에 각 값을 이미지에서 한 번 더 대조 확인하라.`
 
 // 전산 페이지 텍스트에서 직접 추출 — 캡처(이미지)를 거치지 않아 더 정확하다
-const TEXT_PROMPT = `아래는 상가 매물 정보 페이지(회사 전산)의 본문 텍스트다. 정확도가 가장 중요하다.
-텍스트를 꼼꼼히 읽고 다음 항목을 JSON으로 추출하라:
-상호, 업종, 소재지(주소), 사업자등록번호, 보증금, 월세, 희망권리금(권리금), 관리비, 전화번호, 연락처 이름, 전용면적, 프랜차이즈.
+// 본문은 화면 글자 + 입력칸 값([값: …]/[선택: …]) + 숨겨진 탭 영역([숨겨진 영역])으로 들어온다
+const TEXT_PROMPT = `아래는 상가 매물 정보 페이지(회사 전산)에서 읽어 온 본문이다. 정확도가 가장 중요하다.
+본문 표기: 입력칸·선택칸의 값은 [값: …] 또는 [선택: …]으로, 표의 칸 구분은 | 로 들어 있다. '[숨겨진 영역]' 아래는 다른 탭 등 화면에 숨겨진 내용이다.
+이 매물 하나에 대해 다음 항목을 JSON으로 추출하라:
+- 기본: 상호, 업종, 소재지(주소), 사업자등록번호, 전화번호, 연락처 이름, 전용면적, 프랜차이즈
+- 금액: 보증금, 월세, 희망권리금(권리금), 관리비
+- 광고용: 시설 상태(facility), 매출과 수익(revenue), 특장점(strengths), 특이사항 및 매도사유(notes)
 
 규칙:
-- 라벨과 값을 정확히 대응시켜 읽는다. 다른 항목의 값과 절대 섞지 마라.
+- 라벨과 값을 정확히 대응시켜 읽는다. 다른 항목의 값과 절대 섞지 마라. 한 행에 라벨과 값이 | 로 이어져 있으면 그 값이 그 라벨의 것이다.
 - 금액은 원 단위 숫자로 변환한다. 예: "3,000만" → 30000000, "1억 2000" → 120000000, "5,000/300"은 보증금 5000만/월세 300만이다.
 - 사업자등록번호는 숫자 10자리(000-00-00000)다. 전화번호와 혼동하지 마라.
 - 업종은 가장 세부 업종명 하나만 쓴다.
 - 전화번호는 숫자와 하이픈만 남긴다.
 - 전용면적은 '전용면적' 라벨의 값을 단위까지 그대로 쓴다. 대지·연면적과 혼동하지 마라.
 - 프랜차이즈는 브랜드명만. 비어 있거나 개인/직영이면 null.
-- 텍스트에서 확인할 수 없는 항목은 null로 둔다. 절대 추측하거나 지어내지 마라.`
+- facility/revenue/strengths/notes는 본문에 있는 내용만 간결하게 옮겨 쓴다(원문 숫자·표현 유지, 2~4문장 이내). 본문에 없으면 null. 지어내거나 추측하지 마라.
+- 본문에서 확인할 수 없는 항목은 null로 둔다. 절대 추측하거나 지어내지 마라.`
 
-// Vercel 함수 실행 제한 60초 — 기본값(10초)이면 pro가 느릴 때 flash 폴백 전에 끊긴다
 export const config = { api: { bodyParser: { sizeLimit: '4mb' } }, maxDuration: 60 }
 
 // 모델별 응답 제한 — pro가 이 시간을 넘기면 끊고 flash로 넘어간다 (단계 멈춤 방지)
@@ -101,29 +110,33 @@ export default async function handler(req, res) {
       return
     }
 
+    const textMode = !parsed
     const parts = parsed
       ? [{ inline_data: { mime_type: parsed.mimeType, data: parsed.data } }, { text: PROMPT }]
-      : [{ text: `${TEXT_PROMPT}\n\n[페이지 본문]\n${text.slice(0, 20000)}` }]
-    const body = JSON.stringify({
+      : [{ text: `${TEXT_PROMPT}\n\n[페이지 본문]\n${text.slice(0, 30000)}` }]
+    const bodyFor = model => JSON.stringify({
       contents: [{ parts }],
       generationConfig: {
         response_mime_type: 'application/json',
         response_schema: SCHEMA,
         temperature: 0,
+        // 글자 추출은 생각 시간이 필요 없다 — flash는 생각을 끄고 바로 답해 수 초 안에 끝낸다
+        ...(textMode && model.includes('flash') ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
       },
     })
+    const models = textMode ? [...MODELS].reverse() : MODELS
 
     // pro 먼저 시도, 실패·지연 시 flash로 폴백
     let lastStatus = 502
     let lastMsg = 'Gemini API 오류'
-    for (const model of MODELS) {
+    for (const model of models) {
       try {
         const r = await fetchWithTimeout(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
           {
             method: 'POST',
             headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
-            body,
+            body: bodyFor(model),
           },
           MODEL_TIMEOUT_MS,
         )

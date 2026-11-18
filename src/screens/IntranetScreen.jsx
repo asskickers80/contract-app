@@ -13,6 +13,8 @@ export default function IntranetScreen({ onBack, onRead, busy }) {
   const [activeTab, setActiveTab] = useState(1)
   const nextId = useRef(2)
   const frameRefs = useRef({})
+  const [loading, setLoading] = useState({ 1: true }) // 창별 불러오는 중 표시 — 느릴 때 멈춘 것처럼 보이지 않게
+  const markLoading = (id, v) => setLoading(l => (l[id] === v ? l : { ...l, [id]: v }))
   // 창 목록은 ref가 진실 — 메시지가 연달아 와도(빈 창 생성 직후 location 대입 등) 같은 이름 창이 중복 생성되지 않게
   const tabsRef = useRef(tabs)
   function commitTabs(next) {
@@ -41,6 +43,7 @@ export default function IntranetScreen({ onBack, onRead, busy }) {
       if (existing) {
         setActiveTab(existing.id)
         if (!d.ensure) {
+          markLoading(existing.id, true)
           commitTabs(cur.map(t => (t.id === existing.id ? { ...t, src: path, rev: t.rev + 1 } : t)))
         }
         return
@@ -49,11 +52,13 @@ export default function IntranetScreen({ onBack, onRead, busy }) {
         // 창이 너무 많으면 마지막 탭을 재사용
         const last = cur[cur.length - 1]
         setActiveTab(last.id)
+        markLoading(last.id, true)
         commitTabs(cur.map(t => (t.id === last.id ? { ...t, src: path, name, rev: t.rev + 1 } : t)))
         return
       }
       const id = nextId.current++
       setActiveTab(id)
+      markLoading(id, path !== 'about:blank')
       commitTabs([...cur, { id, src: path, name, rev: 0 }])
     }
     window.addEventListener('message', onMsg)
@@ -65,6 +70,7 @@ export default function IntranetScreen({ onBack, onRead, busy }) {
     if (cur.length >= MAX_TABS) return
     const id = nextId.current++
     setActiveTab(id)
+    markLoading(id, true)
     commitTabs([...cur, { id, src: '/', name: '', rev: 0 }])
   }
 
@@ -98,7 +104,7 @@ export default function IntranetScreen({ onBack, onRead, busy }) {
         <button
           onClick={() => {
             const f = frameRefs.current[activeTab]
-            if (f) f.src = f.src // eslint-disable-line no-self-assign
+            if (f) { markLoading(activeTab, true); f.src = f.src } // eslint-disable-line no-self-assign
           }}
           aria-label="전산 새로고침"
           className="rounded-full bg-chip px-3 py-1.5 text-xs font-bold text-fg-2 active:opacity-80">↻</button>
@@ -130,6 +136,12 @@ export default function IntranetScreen({ onBack, onRead, busy }) {
         </span>
       </div>
 
+      {loading[activeTab] && (
+        <div className="h-1 w-full shrink-0 overflow-hidden bg-chip" role="progressbar" aria-label="전산 불러오는 중">
+          <div className="h-full w-2/5 animate-pulse rounded-full bg-primary" />
+        </div>
+      )}
+
       {/* 모든 창을 유지하고 보이는 것만 전환 (로그인 세션·보던 페이지 유지) */}
       <div className="relative min-h-0 flex-1">
         {tabs.map(t => (
@@ -138,6 +150,7 @@ export default function IntranetScreen({ onBack, onRead, busy }) {
             name={t.name || undefined}
             ref={el => { if (el) frameRefs.current[t.id] = el }}
             src={t.src}
+            onLoad={() => markLoading(t.id, false)}
             title={`회사 전산 창 ${t.id}`}
             className={`absolute inset-0 h-full w-full border-0 bg-white ${activeTab === t.id ? '' : 'invisible'}`}
           />
