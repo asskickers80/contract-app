@@ -8,18 +8,40 @@
     }
   },
   "rewrites": [
-    { "source": "/app", "destination": "/app/index.html" },
-    { "source": "/app/", "destination": "/app/index.html" },
-    { "source": "/((?!app/?|api/proxy|api/extract|api/adwrite).*)", "destination": "/api/proxy?__path=/$1" }
+    {
+      "source": "/app",
+      "destination": "/app/index.html"
+    },
+    {
+      "source": "/app/",
+      "destination": "/app/index.html"
+    },
+    {
+      "source": "/((?!app/?|api/proxy|api/extract|api/adwrite).*)",
+      "destination": "/api/proxy?__path=/$1"
+    }
   ],
   "headers": [
     {
       "source": "/app/((?!assets/).*)",
-      "headers": [{ "key": "Cache-Control", "value": "no-cache, must-revalidate" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, must-revalidate"
+        }
+      ]
     },
     {
       "source": "/app",
-      "headers": [{ "key": "Cache-Control", "value": "no-cache, must-revalidate" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, must-revalidate"
+        }
+      ]
     }
+  ],
+  "regions": [
+    "icn1"
   ]
 }

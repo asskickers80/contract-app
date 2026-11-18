@@ -76,6 +76,11 @@ export default function AdWorkTab({ cardKey, active }) {
           monthlyRent: saved.monthlyRent ?? bi?.monthlyRent ?? null,
           premium: saved.premium ?? bi?.premium ?? null,
           maintenanceFee: saved.maintenanceFee ?? bi?.maintenanceFee ?? null,
+          // 10~13번도 전산에서 읽은 내용이 있으면 미리 채움 (직접 쓴 값은 유지)
+          facility: saved.facility || bi?.facility || '',
+          revenue: saved.revenue || bi?.revenue || '',
+          strengths: saved.strengths || bi?.strengths || '',
+          notes: saved.notes || bi?.notes || '',
         })
         setAdText(board?.ad?.generated || '')
         setLoaded(true)

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import CaptureBoard from '../components/CaptureBoard.jsx'
 import IntranetScreen from './IntranetScreen.jsx'
-import { collectPageText, pickCaptureDoc, takeIntranetPending } from '../lib/intranetText.js'
+import { collectPageText, takeIntranetPending } from '../lib/intranetText.js'
 import { loadCardBoard, saveCardBoard, patchCardBoard, listCardBoards, deleteCardBoard, imageSig } from '../lib/boardStore.js'
 import SyncBanner from '../components/SyncBanner.jsx'
 import { formatPhone, formatComma, parseAmount, formatBizNo } from '../lib/format.js'
@@ -28,12 +28,26 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
   // 뷰어를 어디서 열었는지 — 목록(불러오기)에서 열었으면 뒤로 갈 때 다시 목록으로
   const [backTo, setBackTo] = useState(() => (FRESH_LAUNCH ? 'home' : loadUi('listing')?.backTo ?? 'home'))
 
-  useEffect(() => { saveUi('listing', { view, boardKey, backTo }) }, [view, boardKey, backTo])
+  // 전산에서 [이 매물 읽기]로 만든 현재 작업 카드 — 별도 화면을 열지 않고도 상담·계약·매물작업이 이 카드를 쓴다
+  const [intraKey, setIntraKey] = useState(() => (FRESH_LAUNCH ? null : loadUi('listing')?.intraKey ?? null))
+  const [toast, setToast] = useState(null) // 읽기 결과 안내 { kind: 'ok'|'err', title, lines }
+  // 전산 화면은 처음 열 때 로드 — 앱을 켤 때마다 뒤에서 전산을 미리 불러오면 iPad가 느려진다 (열어 둔 뒤에는 유지)
+  const [intranetOpened, setIntranetOpened] = useState(view === 'intranet')
+  useEffect(() => { if (view === 'intranet') setIntranetOpened(true) }, [view])
+
+  useEffect(() => { saveUi('listing', { view, boardKey, backTo, intraKey }) }, [view, boardKey, backTo, intraKey])
 
   // 노트 탭에 현재 보드 키 전달
   useEffect(() => {
-    onActiveCard?.(view === 'viewer' ? boardKey : null)
-  }, [view, boardKey])
+    onActiveCard?.(view === 'viewer' ? boardKey : (intraKey ?? null))
+  }, [view, boardKey, intraKey])
+
+  // 안내는 잠시 보여 주고 사라진다 (오류는 더 오래)
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), toast.kind === 'ok' ? 14000 : 20000)
+    return () => clearTimeout(t)
+  }, [toast])
 
   // 뒤로 가기: 뷰어는 열었던 곳(목록/홈)으로, 라이브러리는 홈으로 (앱 밖으로 나가지 않음)
   useBackClose(active && view !== 'home', () => (view === 'viewer' ? closeViewer() : goHome()))
@@ -41,6 +55,7 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
   // 전달·결제 보관함의 [열기] 요청 — 해당 보드를 뷰어로 (뒤로 가면 파일 목록으로)
   useEffect(() => {
     if (!openCardReq?.key) return
+    setIntraKey(null)
     setBoardKey(openCardReq.key)
     setInitBoard(null)
     setBackTo('library')
@@ -54,6 +69,7 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
     const existing = await listCardBoards()
       .then(bs => bs.find(x => x.image === image || (x.imageSig && x.imageSig === sig)))
       .catch(() => null)
+    setIntraKey(null)
     if (existing) {
       setBoardKey(existing.key)
       setInitBoard(null)
@@ -72,6 +88,7 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
   }
 
   function openSaved(entry) {
+    setIntraKey(null)
     setBoardKey(entry.key)
     setInitBoard(null)
     setBackTo('library')
@@ -91,20 +108,21 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
     setView(backTo === 'library' ? 'library' : backTo === 'intranet' ? 'intranet' : 'home')
   }
 
-  // ── 회사 전산에서 매물 읽기 — 캡처 없이 페이지 텍스트를 바로 AI 추출 ──
-  // doc: 앱 안 창에서 읽을 때(화면 이미지까지 생성) / text만: 앱 밖 새 창에서 넘겨 준 본문(정보 카드 이미지)
+  // ── 회사 전산에서 매물 읽기 — 캡처 없이 페이지 본문을 바로 AI 추출 ──
+  // 별도 화면(캡처 뷰어)을 열지 않는다: 정보를 현재 작업 카드에 담아 두기만 하고, 결과는 안내로 보여 준다.
+  // 상담(수수료)·계약서·매물작업(광고작성 1~13번)은 이 카드를 읽어 자동으로 채워진다.
+  // doc: 앱 안 창에서 읽을 때 / text만: 앱 밖 새 창에서 넘겨 준 본문
   const [intraBusy, setIntraBusy] = useState(false)
   const intraBusyRef = useRef(false)
   async function readIntranet({ doc = null, text: givenText = null }) {
     if (intraBusyRef.current) return
     intraBusyRef.current = true
     setIntraBusy(true)
+    setToast(null)
     try {
-      // 옛 전산은 frameset/중첩 iframe 구조 — 모든 하위 프레임의 본문을 모아서 읽는다
-      const raw = givenText != null ? givenText : collectPageText(doc)
-      const text = raw.replace(/\n{3,}/g, '\n\n').trim().slice(0, 20000)
-      if (text.length < 40) throw new Error('읽을 내용이 없어요 — 매물 상세 화면을 띄운 뒤 눌러 주세요')
-      // 1) 페이지 텍스트 → AI 추출 (이미지 OCR보다 정확)
+      // 옛 전산은 frameset/중첩 iframe + 입력칸 값 + 숨은 탭 구조 — 전부 모아서 읽는다
+      const text = (givenText != null ? givenText : collectPageText(doc)).slice(0, 30000)
+      if (text.replace(/\s/g, '').length < 40) throw new Error('읽을 내용이 없어요 — 매물 상세 화면을 띄운 뒤 눌러 주세요')
       const r = await fetchWithTimeout('/api/extract', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -116,37 +134,29 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
       for (const [k, v] of Object.entries(data.fields || {})) {
         if (v !== null && v !== undefined && v !== '') info[k] = v
       }
-      // 2) 페이지 모습을 보드 배경 이미지로 (실패하면 정보 카드로 대체)
-      //    높이 상한 3200px + 캔버스 즉시 해제 — 긴 전산 화면이 iPad 메모리를 잡아먹어 이후 화면이 깨지는 것 방지
-      let image = null
-      if (doc) {
-        try {
-          const target = pickCaptureDoc(doc)
-          const { default: html2canvas } = await import('html2canvas')
-          const canvas = await html2canvas(target.body, {
-            backgroundColor: '#ffffff', scale: 1, useCORS: true, logging: false,
-            windowWidth: Math.min(1280, target.documentElement.scrollWidth || 1280),
-            height: Math.min(3200, target.documentElement.scrollHeight || 3200),
-          })
-          if (canvas.width > 10 && canvas.height > 10) {
-            const url = canvas.toDataURL('image/jpeg', 0.85)
-            canvas.width = 0
-            canvas.height = 0
-            image = await downscaleImage(url)
-          }
-        } catch { /* 폴백 사용 */ }
+      if (!Object.keys(info).length) throw new Error('매물 정보를 찾지 못했어요 — 매물 상세 화면인지 확인해 주세요')
+
+      // 같은 매물을 다시 읽으면 새 카드를 만들지 않고 기존 카드에 반영 (작업 보관함이 지저분해지지 않게)
+      const sig = intranetSig(info)
+      const existing = sig
+        ? await listCardBoards().then(bs => bs.find(x => x.sourceSig === sig)).catch(() => null)
+        : null
+      let key
+      if (existing) {
+        key = existing.key
+        const cur = await loadCardBoard(key).catch(() => null)
+        await patchCardBoard(key, { info: { ...(cur?.info || {}), ...info }, sourceSig: sig })
+      } else {
+        key = newBoardKey()
+        const image = infoCardImage(info)
+        await saveCardBoard(key, {
+          image, notes: [], capturedAt: new Date().toISOString(), info, source: 'intranet', sourceSig: sig,
+        }).catch(() => {})
       }
-      if (!image) image = infoCardImage(info)
-      // 3) 새 매물카드 시작 — 추출 정보가 이미 있으므로 재추출 없음
-      const key = newBoardKey()
-      const init = { image, notes: [], capturedAt: new Date().toISOString(), info }
-      setBoardKey(key)
-      setInitBoard(init)
-      setBackTo(doc ? 'intranet' : 'home')
-      setView('viewer')
-      saveCardBoard(key, init).catch(() => {})
+      setIntraKey(key) // 상담·계약·매물작업이 이 카드를 쓴다
+      setToast({ kind: 'ok', ...readSummary(info, !!existing) })
     } catch (err) {
-      alert(`매물 읽기 실패: ${err.message || err}`)
+      setToast({ kind: 'err', title: '매물 읽기 실패', lines: [String(err.message || err)] })
     } finally {
       intraBusyRef.current = false
       setIntraBusy(false)
@@ -154,7 +164,7 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
   }
   const handleIntranetRead = doc => readIntranet({ doc })
 
-  // 앱 밖 새 창의 [이 매물 읽기]로 넘어온 본문이 있으면 이어서 매물카드를 만든다
+  // 앱 밖 새 창의 [이 매물 읽기]로 넘어온 본문이 있으면 이어서 처리한다
   useEffect(() => {
     const p = takeIntranetPending()
     if (p) readIntranet({ text: p.text })
@@ -172,15 +182,18 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
 
   return (
     <div className="h-full">
-      <div className={view === 'intranet' ? 'h-full' : 'hidden'}>
-        <IntranetScreen onBack={goHome} onRead={handleIntranetRead} busy={intraBusy} />
-      </div>
+      {intranetOpened && (
+        <div className={view === 'intranet' ? 'h-full' : 'hidden'}>
+          <IntranetScreen onBack={goHome} onRead={handleIntranetRead} busy={intraBusy} />
+        </div>
+      )}
       {view !== 'intranet' && <div className="h-full">{overlay}</div>}
       {intraBusy && view !== 'intranet' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <p className="rounded-2xl bg-card px-6 py-4 text-sm font-extrabold text-fg shadow-card">전산 매물 읽는 중…</p>
         </div>
       )}
+      {toast && <ReadToast toast={toast} onClose={() => setToast(null)} />}
     </div>
   )
 }
@@ -191,6 +204,12 @@ function HomeScreen({ onNew, onLibrary, onIntranet }) {
   // iOS 사진 선택창의 미리보기가 작아 어떤 캡처인지 알기 어려움 (2026-10-09 대표님 보고)
   // → 선택 직후 앱 안에서 크게 보여주고 확인 후 시작한다
   const [preview, setPreview] = useState(null)
+
+  // 전산 프록시(서버리스)를 미리 깨워 둔다 — 첫 전산 열기의 콜드 스타트 지연 완화 (페이지는 불러오지 않는 HEAD 한 번)
+  useEffect(() => {
+    const t = setTimeout(() => { fetch('/', { method: 'HEAD', cache: 'no-store' }).catch(() => {}) }, 2500)
+    return () => clearTimeout(t)
+  }, [])
 
   function handleFileChange(e) {
     const file = e.target.files?.[0]
@@ -450,37 +469,67 @@ function downscaleImage(dataUrl, max = 2048) {
   })
 }
 
-// 전산 페이지를 이미지로 못 만들 때 쓰는 보드 배경 — 추출 정보를 정돈된 카드로 그린다
+// 전산에서 읽은 매물 카드 이미지 — 추출한 정보를 정돈된 한 장으로 그린다 (보관함 썸네일·보드 배경)
 function infoCardImage(info) {
+  const FONT = '-apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif'
+  const W = 1400
+  const won = n => (typeof n === 'number' ? `${n.toLocaleString('ko-KR')}원` : n || '')
+  const rows = [
+    ['상호', info.storeName], ['업종', info.businessType], ['소재지', info.address], ['전용면적', info.area],
+    ['보증금', won(info.deposit)], ['월세', won(info.monthlyRent)], ['희망권리금', won(info.premium)],
+    ['관리비', won(info.maintenanceFee)], ['사업자번호', info.bizNo], ['전화번호', info.phone],
+    ['프랜차이즈', info.franchise],
+  ].filter(([, v]) => v !== null && v !== undefined && v !== '')
+  const longs = [['시설 상태', info.facility], ['매출과 수익', info.revenue], ['특장점', info.strengths], ['특이사항·매도사유', info.notes]]
+    .filter(([, v]) => v)
+
+  // 긴 글은 줄바꿈 — 먼저 측정용 캔버스로 줄 수를 센다
+  const m = document.createElement('canvas').getContext('2d')
+  m.font = `600 32px ${FONT}`
+  const wrap = text => {
+    const out = []
+    let cur = ''
+    for (const ch of [...String(text).replace(/\s+/g, ' ')]) {
+      if (m.measureText(cur + ch).width > W - 96 && cur) { out.push(cur); cur = ch } else cur += ch
+    }
+    if (cur) out.push(cur)
+    return out.slice(0, 4)
+  }
+  const longBlocks = longs.map(([label, v]) => [label, wrap(v)])
+  const H = 110 + 50 + rows.length * 66 + longBlocks.reduce((n, [, ls]) => n + 62 + ls.length * 44, 0) + 40
+
   const c = document.createElement('canvas')
-  c.width = 1400
-  c.height = 1000
+  c.width = W
+  c.height = Math.max(700, H)
   const x = c.getContext('2d')
   x.fillStyle = '#ffffff'
   x.fillRect(0, 0, c.width, c.height)
   x.fillStyle = '#1d4ed8'
   x.fillRect(0, 0, c.width, 110)
   x.fillStyle = '#ffffff'
-  x.font = '700 48px -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif'
+  x.font = `700 48px ${FONT}`
   x.fillText('점포라인 전산 매물', 48, 72)
-  const won = n => (typeof n === 'number' ? `${n.toLocaleString('ko-KR')}원` : n || '-')
-  const rows = [
-    ['상호', info.storeName], ['업종', info.businessType], ['소재지', info.address],
-    ['보증금', won(info.deposit)], ['월세', won(info.monthlyRent)], ['희망권리금', won(info.premium)],
-    ['관리비', won(info.maintenanceFee)], ['전용면적', info.area], ['전화번호', info.phone],
-    ['프랜차이즈', info.franchise],
-  ].filter(([, v]) => v !== null && v !== undefined && v !== '')
-  let y = 200
+  let y = 190
   for (const [label, value] of rows) {
     x.fillStyle = '#6b7280'
-    x.font = '600 34px -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif'
+    x.font = `600 32px ${FONT}`
     x.fillText(label, 48, y)
     x.fillStyle = '#111827'
-    x.font = '700 40px -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif'
-    x.fillText(String(value), 320, y)
+    x.font = `700 36px ${FONT}`
+    x.fillText(String(value), 330, y)
     x.strokeStyle = '#e5e7eb'
-    x.beginPath(); x.moveTo(48, y + 26); x.lineTo(c.width - 48, y + 26); x.stroke()
-    y += 76
+    x.beginPath(); x.moveTo(48, y + 22); x.lineTo(c.width - 48, y + 22); x.stroke()
+    y += 66
+  }
+  for (const [label, ls] of longBlocks) {
+    y += 8
+    x.fillStyle = '#1d4ed8'
+    x.font = `700 32px ${FONT}`
+    x.fillText(label, 48, y)
+    x.fillStyle = '#111827'
+    x.font = `600 32px ${FONT}`
+    for (const l of ls) { y += 44; x.fillText(l, 48, y) }
+    y += 18
   }
   const out = c.toDataURL('image/jpeg', 0.9)
   c.width = 0
@@ -506,8 +555,8 @@ function CaptureViewer({ boardKey, initBoard, onBack, active }) {
     const img = board?.image
     if (!img || extracting) return
     if (extractedImageRef.current === img) return
-    if (board.info?.storeName && extractedImageRef.current === null) {
-      extractedImageRef.current = img // 상호까지 저장된 보드 — 재추출하지 않음
+    if ((board.info?.storeName || board.source === 'intranet') && extractedImageRef.current === null) {
+      extractedImageRef.current = img // 상호까지 저장된 보드(전산에서 읽은 카드 포함) — 재추출하지 않음
       return
     }
     extractedImageRef.current = img
@@ -720,6 +769,60 @@ function InfoPanel({ info, setInfo, extracting, onReextract, onSave, onClose }) 
             정보 저장
           </button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+
+// 같은 매물 판별용 서명 — 상호+주소(또는 보증금·월세)가 같으면 같은 매물
+function intranetSig(info) {
+  const name = String(info.storeName || '').replace(/\s/g, '')
+  if (!name) return null
+  const place = String(info.address || '').replace(/\s/g, '') || `${info.deposit || ''}/${info.monthlyRent || ''}`
+  return `intranet:${name}|${place}`
+}
+
+// 읽기 결과 요약 — 어떤 값이 읽혔고 무엇이 비었는지 한눈에
+function readSummary(info, updated) {
+  const won = n => (typeof n === 'number' ? `${formatComma(n)}원` : null)
+  const lines = []
+  const head = [info.storeName, info.businessType, info.area].filter(Boolean).join(' · ')
+  if (head) lines.push(head)
+  if (info.address) lines.push(info.address)
+  const money = [
+    info.deposit != null && `보증금 ${won(info.deposit)}`,
+    info.monthlyRent != null && `월세 ${won(info.monthlyRent)}`,
+    info.premium != null && `권리금 ${won(info.premium)}`,
+    info.maintenanceFee != null && `관리비 ${won(info.maintenanceFee)}`,
+  ].filter(Boolean).join(' / ')
+  if (money) lines.push(money)
+  if (info.bizNo || info.phone) lines.push([info.bizNo && `사업자 ${info.bizNo}`, info.phone && `전화 ${info.phone}`].filter(Boolean).join(' · '))
+  const ad = [info.facility && '시설', info.revenue && '매출', info.strengths && '특장점', info.notes && '특이사항·매도사유'].filter(Boolean)
+  if (ad.length) lines.push(`광고용: ${ad.join(', ')}`)
+  const core = [['storeName', '상호'], ['businessType', '업종'], ['address', '소재지'], ['bizNo', '사업자번호'], ['deposit', '보증금'], ['monthlyRent', '월세'], ['premium', '권리금'], ['area', '면적']]
+  const missing = core.filter(([k]) => info[k] === undefined || info[k] === null || info[k] === '').map(([, label]) => label)
+  if (missing.length) lines.push(`확인 안 된 항목: ${missing.join(', ')} (다른 화면/탭에 있으면 그 화면에서 한 번 더 읽어 주세요)`)
+  return {
+    title: updated ? '읽기 완료 — 기존 카드에 반영' : '읽기 완료',
+    lines,
+    foot: '상담 · 계약 · 매물작업 탭에 반영됐어요',
+  }
+}
+
+function ReadToast({ toast, onClose }) {
+  const ok = toast.kind === 'ok'
+  return (
+    <div className="pointer-events-none fixed inset-x-0 top-20 z-50 flex justify-center px-4">
+      <div className={`pointer-events-auto w-full max-w-md rounded-2xl p-4 shadow-card ${ok ? 'bg-ok text-on-ok' : 'bg-danger-container text-on-danger-container'}`}>
+        <div className="flex items-start gap-2">
+          <p className="flex-1 text-[15px] font-extrabold">{ok ? '✓ ' : '⚠ '}{toast.title}</p>
+          <button onClick={onClose} aria-label="닫기" className="-mr-1 -mt-1 rounded-full px-2.5 py-1 text-sm font-bold opacity-70 active:opacity-100">✕</button>
+        </div>
+        <div className="mt-1.5 space-y-0.5 text-[13px] leading-snug">
+          {toast.lines.map((l, i) => <p key={i}>{l}</p>)}
+        </div>
+        {toast.foot && <p className="mt-2 text-[12.5px] font-bold opacity-90">{toast.foot}</p>}
       </div>
     </div>
   )
