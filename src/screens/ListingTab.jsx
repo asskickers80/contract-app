@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import CaptureBoard from '../components/CaptureBoard.jsx'
-import IntranetScreen from './IntranetScreen.jsx'
-import { collectPageText, takeIntranetPending } from '../lib/intranetText.js'
+import { takeIntranetPending, hasIntranetPending, hasGoCapture, takeGoCapture } from '../lib/intranetText.js'
 import { loadCardBoard, saveCardBoard, patchCardBoard, listCardBoards, deleteCardBoard, imageSig } from '../lib/boardStore.js'
 import SyncBanner from '../components/SyncBanner.jsx'
 import { formatPhone, formatComma, parseAmount, formatBizNo } from '../lib/format.js'
@@ -16,12 +15,11 @@ const newBoardKey = () => `cap-${Date.now()}`
 export default function ListingTab({ onActiveCard, active, openCardReq }) {
   // 사용 중 새로고침이면 보던 화면(라이브러리/캡처 뷰어) 복원, 새 실행이면 홈에서 시작
   const [view, setView] = useState(() => {
-    if (FRESH_LAUNCH) return 'home'
+    if (FRESH_LAUNCH || hasIntranetPending() || hasGoCapture()) return 'home' // 전산에서 읽기·캡처하러 돌아온 경우도 홈에서
     const s = loadUi('listing')
     if (s?.view === 'viewer' && s.boardKey) return 'viewer'
     if (s?.view === 'library') return 'library'
-    if (s?.view === 'intranet') return 'intranet'
-    return 'home' // home | library | viewer | intranet
+    return 'home' // home | library | viewer
   })
   const [boardKey, setBoardKey] = useState(() => (FRESH_LAUNCH ? null : loadUi('listing')?.boardKey ?? null))
   const [initBoard, setInitBoard] = useState(null) // 신규 진입 시 초기 보드 (복원 시엔 저장소에서 로드)
@@ -31,9 +29,6 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
   // 전산에서 [이 매물 읽기]로 만든 현재 작업 카드 — 별도 화면을 열지 않고도 상담·계약·매물작업이 이 카드를 쓴다
   const [intraKey, setIntraKey] = useState(() => (FRESH_LAUNCH ? null : loadUi('listing')?.intraKey ?? null))
   const [toast, setToast] = useState(null) // 읽기 결과 안내 { kind: 'ok'|'err', title, lines }
-  // 전산 화면은 처음 열 때 로드 — 앱을 켤 때마다 뒤에서 전산을 미리 불러오면 iPad가 느려진다 (열어 둔 뒤에는 유지)
-  const [intranetOpened, setIntranetOpened] = useState(view === 'intranet')
-  useEffect(() => { if (view === 'intranet') setIntranetOpened(true) }, [view])
 
   useEffect(() => { saveUi('listing', { view, boardKey, backTo, intraKey }) }, [view, boardKey, backTo, intraKey])
 
@@ -105,23 +100,22 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
   function closeViewer() {
     setBoardKey(null)
     setInitBoard(null)
-    setView(backTo === 'library' ? 'library' : backTo === 'intranet' ? 'intranet' : 'home')
+    setView(backTo === 'library' ? 'library' : 'home')
   }
 
   // ── 회사 전산에서 매물 읽기 — 캡처 없이 페이지 본문을 바로 AI 추출 ──
   // 별도 화면(캡처 뷰어)을 열지 않는다: 정보를 현재 작업 카드에 담아 두기만 하고, 결과는 안내로 보여 준다.
   // 상담(수수료)·계약서·매물작업(광고작성 1~13번)은 이 카드를 읽어 자동으로 채워진다.
-  // doc: 앱 안 창에서 읽을 때 / text만: 앱 밖 새 창에서 넘겨 준 본문
+  // 전산 화면의 [읽기] 버튼이 넘겨 둔 본문(text)을 받아 처리한다
   const [intraBusy, setIntraBusy] = useState(false)
   const intraBusyRef = useRef(false)
-  async function readIntranet({ doc = null, text: givenText = null }) {
+  async function readIntranet(givenText) {
     if (intraBusyRef.current) return
     intraBusyRef.current = true
     setIntraBusy(true)
     setToast(null)
     try {
-      // 옛 전산은 frameset/중첩 iframe + 입력칸 값 + 숨은 탭 구조 — 전부 모아서 읽는다
-      const text = (givenText != null ? givenText : collectPageText(doc)).slice(0, 30000)
+      const text = String(givenText || '').slice(0, 30000)
       if (text.replace(/\s/g, '').length < 40) throw new Error('읽을 내용이 없어요 — 매물 상세 화면을 띄운 뒤 눌러 주세요')
       const r = await fetchWithTimeout('/api/extract', {
         method: 'POST',
@@ -154,6 +148,9 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
         }).catch(() => {})
       }
       setIntraKey(key) // 상담·계약·매물작업이 이 카드를 쓴다
+      setView('home') // 복원돼 있던 다른 화면이 이 카드를 가리지 않게
+      setBoardKey(null)
+      setInitBoard(null)
       setToast({ kind: 'ok', ...readSummary(info, !!existing) })
     } catch (err) {
       setToast({ kind: 'err', title: '매물 읽기 실패', lines: [String(err.message || err)] })
@@ -162,33 +159,26 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
       setIntraBusy(false)
     }
   }
-  const handleIntranetRead = doc => readIntranet({ doc })
 
-  // 앱 밖 새 창의 [이 매물 읽기]로 넘어온 본문이 있으면 이어서 처리한다
+  // 전산 화면에서 [읽기]를 눌러 돌아왔으면 넘겨 둔 본문을 이어서 읽는다
   useEffect(() => {
     const p = takeIntranetPending()
-    if (p) readIntranet({ text: p.text })
+    if (p) readIntranet(p.text)
   }, [])
 
-  // 전산 탭은 로그인 세션·보던 페이지 유지를 위해 항상 떠 있고(숨김), 다른 화면을 겹쳐 그린다
   const overlay =
     view === 'viewer' && boardKey
       ? <CaptureViewer boardKey={boardKey} initBoard={initBoard} onBack={closeViewer} active={active} />
       : view === 'library'
         ? <LibraryScreen onOpen={openSaved} onBack={goHome} />
         : view === 'home'
-          ? <HomeScreen onNew={openNew} onLibrary={() => setView('library')} onIntranet={() => setView('intranet')} />
+          ? <HomeScreen onNew={openNew} onLibrary={() => setView('library')} />
           : null
 
   return (
     <div className="h-full">
-      {intranetOpened && (
-        <div className={view === 'intranet' ? 'h-full' : 'hidden'}>
-          <IntranetScreen onBack={goHome} onRead={handleIntranetRead} busy={intraBusy} />
-        </div>
-      )}
-      {view !== 'intranet' && <div className="h-full">{overlay}</div>}
-      {intraBusy && view !== 'intranet' && (
+      <div className="h-full">{overlay}</div>
+      {intraBusy && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <p className="rounded-2xl bg-card px-6 py-4 text-sm font-extrabold text-fg shadow-card">전산 매물 읽는 중…</p>
         </div>
@@ -199,11 +189,13 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
 }
 
 // ── 홈: 신규 / 불러오기 / 회사 전산 ──────────────────────────
-function HomeScreen({ onNew, onLibrary, onIntranet }) {
+function HomeScreen({ onNew, onLibrary }) {
   const fileRef = useRef()
   // iOS 사진 선택창의 미리보기가 작아 어떤 캡처인지 알기 어려움 (2026-10-09 대표님 보고)
   // → 선택 직후 앱 안에서 크게 보여주고 확인 후 시작한다
   const [preview, setPreview] = useState(null)
+  // 전산 화면의 [캡처]로 돌아왔으면: 화면을 캡처한 뒤 바로 고르도록 안내
+  const [capGuide] = useState(() => takeGoCapture())
 
   // 전산 프록시(서버리스)를 미리 깨워 둔다 — 첫 전산 열기의 콜드 스타트 지연 완화 (페이지는 불러오지 않는 HEAD 한 번)
   useEffect(() => {
@@ -232,7 +224,9 @@ function HomeScreen({ onNew, onLibrary, onIntranet }) {
   }
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-6 px-8">
+    // 짧은 화면에서는 내용이 위로 넘쳐 상단 탭을 덮지 않고 스크롤되게 (넘치지 않으면 가운데 정렬 그대로)
+    <div className="h-full overflow-y-auto">
+    <div className="flex min-h-full flex-col items-center justify-center gap-6 px-8 py-6">
       <div className="w-full max-w-sm"><SyncBanner /></div>
       <h1 className="text-2xl font-extrabold text-fg">캡처 뷰어</h1>
       <p className="text-sm text-fg-hint">캡처 이미지에 포스트잇 메모를 붙여 보관하세요</p>
@@ -260,7 +254,7 @@ function HomeScreen({ onNew, onLibrary, onIntranet }) {
         </button>
 
         <button
-          onClick={onIntranet}
+          onClick={() => { window.location.href = '/__go' }} // 전산을 일반 브라우저 화면처럼 그대로 연다 (읽기·캡처 버튼이 따라 붙는다)
           className="flex flex-col items-center gap-2 rounded-2xl bg-card px-6 py-8 shadow-card active:opacity-80"
         >
           <span className="text-4xl">🖥️</span>
@@ -278,6 +272,23 @@ function HomeScreen({ onNew, onLibrary, onIntranet }) {
       />
 
       <p className="text-[11px] text-fg-disabled">버전 {__BUILD_TIME__} 빌드</p>
+
+      {capGuide && !preview && (
+        <div className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-surface px-8 text-center">
+          <p className="text-xl font-extrabold text-fg">📷 전산 화면 캡처</p>
+          <p className="text-sm leading-relaxed text-fg-2">
+            전산에서 캡처할 화면을 띄워 <b>전원 + 볼륨 올리기</b>로 화면을 캡처했다면<br />아래 버튼에서 방금 찍은 사진을 골라 주세요.
+          </p>
+          <button onClick={() => fileRef.current?.click()}
+            className="w-full max-w-xs rounded-full bg-primary py-4 text-base font-extrabold text-on-primary active:opacity-90">
+            사진에서 고르기
+          </button>
+          <button onClick={() => { window.location.href = '/__go' }}
+            className="w-full max-w-xs rounded-full bg-chip py-3 text-sm font-bold text-fg-2 active:opacity-80">
+            ← 전산으로 돌아가서 캡처하기
+          </button>
+        </div>
+      )}
 
       {/* 선택한 캡처 확인 — 사진 선택창 미리보기가 작아서, 여기서 크게 보고 시작한다 */}
       {preview && (
@@ -305,6 +316,7 @@ function HomeScreen({ onNew, onLibrary, onIntranet }) {
           </div>
         </div>
       )}
+    </div>
     </div>
   )
 }
