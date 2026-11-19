@@ -7,19 +7,10 @@ import { isSupabaseConfigured } from '../lib/supabase.js'
 
 const PERIOD_OPTIONS = [1, 3, 6, 12]
 
-// 섹션 타이틀 "제목 (보조설명)" — 보조 괄호 부분은 힌트색으로 분리 표시
-function splitTitle(title) {
-  const m = title.match(/^(.*?)\s*(\(.*\))$/)
-  return m ? [m[1], m[2]] : [title, null]
-}
-
 function Section({ title, children }) {
-  const [main, sub] = splitTitle(title)
   return (
     <section className="rounded-2xl bg-card p-4 shadow-card">
-      <h2 className="text-sm font-extrabold text-fg">
-        {main} {sub && <span className="text-xs font-normal text-fg-hint">{sub}</span>}
-      </h2>
+      <h2 className="text-sm font-extrabold text-fg">{title}</h2>
       <div className="mt-3">{children}</div>
     </section>
   )
@@ -86,7 +77,7 @@ export default function ContractForm({ draft, onChange, onGenerate }) {
           </p>
         )}
 
-        <Section title="건별 입력 (매번 새로 입력)">
+        <Section title="건별 입력">
           <div className="space-y-4">
             <TextInput label="상호" required value={draft.storeName} onChange={v => set({ storeName: v })} placeholder="예: 행복분식" />
             <div>
@@ -98,13 +89,13 @@ export default function ContractForm({ draft, onChange, onGenerate }) {
             <TextInput
               label="사업자등록번호" required inputMode="numeric"
               value={draft.bizNo} onChange={v => set({ bizNo: formatBizNo(v) })}
-              placeholder="숫자 10자리만 입력 (자동 하이픈)"
+              placeholder="000-00-00000"
             />
             <TextInput label="소재지" required value={draft.address} onChange={v => set({ address: v })} placeholder="예: 서울시 강남구 ○○동 123-4" />
           </div>
         </Section>
 
-        <Section title="광고 상품 선택 (탭 한 번으로 금액 입력)">
+        <Section title="광고 상품 선택">
           <div className="grid grid-cols-3 gap-2.5">
             {PRODUCTS.map(p => (
               <button key={p.key} onClick={() => selectProduct(p)}
@@ -133,15 +124,13 @@ export default function ContractForm({ draft, onChange, onGenerate }) {
                 className="mt-1 w-full rounded-xl bg-field-em px-3 py-2.5 text-right text-base font-bold text-fg focus:outline-none focus:ring-2 focus:ring-primary" />
             </label>
           </div>
-          <p className="mt-2 text-[11px] text-fg-hint">광고료를 고치면 부가세(10%)와 총액이 자동 계산됩니다.</p>
         </Section>
 
-        <Section title="기본값 (필요 시 수정)">
+        <Section title="기본값">
           <div className="space-y-4">
             {/* 담당 에이전트 고정 — 수정 불가 (2026-07-12 대표님 지시) */}
             <div className="rounded-xl bg-inset px-3.5 py-2.5 text-sm text-fg-2">
               담당 에이전트 <span className="font-bold text-fg">{draft.agentName}</span>
-              <span className="ml-1 text-xs text-fg-hint">(고정)</span>
             </div>
             <TextInput label="광고상품명" value={draft.productName} onChange={v => set({ productName: v })} />
             <div className="grid grid-cols-2 gap-3">
@@ -167,17 +156,16 @@ export default function ContractForm({ draft, onChange, onGenerate }) {
             </div>
             <div className="rounded-xl bg-inset px-3.5 py-2.5 text-sm text-fg-2">
               광고종료일 <span className="font-bold text-fg">{formatKoreanDate(draft.endDate) || '—'}</span>
-              <span className="ml-1 text-xs text-fg-hint">(개시일 + {draft.periodMonths}개월, 자동 계산)</span>
             </div>
           </div>
         </Section>
 
-        <Section title="특약사항 (선택)">
+        <Section title="특약사항">
           <textarea
             value={draft.specialTerms || ''}
             onChange={e => set({ specialTerms: e.target.value })}
             rows={2}
-            placeholder="입력하면 계약서 맨 위 여백에 '※ 특약사항: …'으로 인쇄됩니다. 비워 두면 계약서는 원본 그대로 출력돼요."
+            placeholder="특약사항 입력"
             className="w-full resize-none rounded-xl bg-field px-3.5 py-3 text-base font-semibold text-fg placeholder:font-normal placeholder:text-fg-hint focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </Section>

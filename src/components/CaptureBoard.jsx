@@ -92,9 +92,7 @@ export default function CaptureBoard({ board, onBoardChange }) {
           {placing ? '위치 선택 중… (취소)' : '+ 메모 붙이기'}
         </button>
         <span className="min-w-0 flex-1 truncate text-right text-[11.5px] text-fg-hint">
-          {placing
-            ? '이미지에서 원하는 위치를 눌러 주세요'
-            : `${board.capturedAt ? `캡처: ${new Date(board.capturedAt).toLocaleString('ko-KR')} · ` : ''}메모를 누르면 펼쳐져요 · 드래그로 이동, 모서리로 크기 조절`}
+          {!placing && board.capturedAt ? `캡처: ${new Date(board.capturedAt).toLocaleString('ko-KR')}` : ''}
         </span>
       </div>
 

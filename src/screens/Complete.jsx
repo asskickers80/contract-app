@@ -67,7 +67,6 @@ export default function Complete({ result, onNewContract }) {
         <div className="mt-4 grid gap-3 sm:grid-cols-2 sm:items-stretch">
         <div className="flex flex-col rounded-2xl bg-card p-4 shadow-card">
           <p className="text-sm font-extrabold text-fg">고객에게 계약서 보내기</p>
-          <p className="mt-1 text-xs leading-relaxed text-fg-2">전달 버튼을 누르면 카카오톡·문자·메일·AirDrop 중에서 고를 수 있어요.</p>
           <button onClick={handleShare}
             className="mt-auto w-full rounded-full bg-primary py-3.5 text-sm font-bold text-on-primary active:opacity-90">
             고객에게 보내기 (전달)
@@ -75,8 +74,7 @@ export default function Complete({ result, onNewContract }) {
           {shareStatus === 'shared' && <p className="mt-2 text-center text-sm font-semibold text-on-ok">✓ 전달을 완료했어요</p>}
           {shareStatus === 'downloaded' && (
             <p className="mt-2 text-center text-xs text-on-warn">
-              전달 창 대신 PDF를 다운로드했어요. 파일 앱에서 직접 전달해 주세요.
-              (인트라넷 http 주소에서는 iPad 보안 정책상 전달 창이 안 열려요 — 나중에 HTTPS로 배포하면 열립니다)
+              PDF를 다운로드했어요
             </p>
           )}
           <button onClick={() => downloadBlob(pdfBlob, fileName)}

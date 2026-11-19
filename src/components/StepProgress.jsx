@@ -35,12 +35,10 @@ export default function StepProgress({ step, onBackToInput, onSettings }) {
                   {isPast ? '✓' : it.num}
                 </span>
                 {it.label}
-                {isPast && <span className="text-[10px] font-normal">(수정)</span>}
               </button>
             </span>
           )
         })}
-        <span className="ml-1 hidden text-xs text-fg-hint sm:inline">서명이 끝나면 전달·결제 탭으로 이동합니다</span>
         <div className="ml-auto">
           <button onClick={onSettings} aria-label="설정"
             className="flex h-11 w-11 items-center justify-center rounded-full text-lg text-fg-2 active:bg-chip">

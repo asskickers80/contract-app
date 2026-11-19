@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { savePin } from '../screens/PinLock.jsx'
-import { isSupabaseConfigured } from '../lib/supabase.js'
 import { AGENT_KEY } from '../lib/draft.js'
 
 // 설정 시트 — 담당 에이전트 이름(계약서 기본값), PIN 변경
@@ -34,7 +33,7 @@ export default function SettingsSheet({ onClose, onAgentChange }) {
         </div>
 
         <label className="mt-4 block">
-          <span className="text-xs font-medium text-fg-2">담당 에이전트 이름 (계약서 기본값)</span>
+          <span className="text-xs font-medium text-fg-2">담당 에이전트 이름</span>
           <input
             type="text" value={agentName} onChange={e => saveAgent(e.target.value)}
             placeholder="예: 홍길동"
@@ -43,7 +42,7 @@ export default function SettingsSheet({ onClose, onAgentChange }) {
         </label>
 
         <div className="mt-4">
-          <span className="text-xs font-medium text-fg-2">PIN 변경 (숫자 4자리)</span>
+          <span className="text-xs font-medium text-fg-2">PIN 변경</span>
           <div className="mt-1 flex gap-2">
             <input
               type="password" inputMode="numeric" maxLength={4} value={pinDraft}
@@ -56,12 +55,6 @@ export default function SettingsSheet({ onClose, onAgentChange }) {
         </div>
         {notice && <p className="mt-2 text-sm font-semibold text-primary">{notice}</p>}
 
-        <p className={`mt-5 rounded-xl px-3.5 py-2.5 text-xs leading-relaxed ${isSupabaseConfigured ? 'bg-ok text-on-ok' : 'bg-warn text-on-warn'}`}>
-          {isSupabaseConfigured
-            ? 'Supabase 연결됨 — 계약서가 자동 저장됩니다.'
-            : 'Supabase 미설정 — PDF 생성·전달은 되지만 저장·목록은 동작하지 않아요. (.env에 VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY 입력)'}
-        </p>
-        <p className="mt-3 text-center text-xs text-fg-disabled">내부 전용 · ㈜점포라인 · 버전 {__BUILD_TIME__} 빌드</p>
       </div>
     </div>
   )

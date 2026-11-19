@@ -101,7 +101,6 @@ export default function NoteTab({ cardKey }) {
       <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
         <p className="text-4xl">📋</p>
         <p className="text-sm font-semibold text-fg-2">매물카드에서 카드를 먼저 열어주세요</p>
-        <p className="text-xs text-fg-hint">카드를 열면 이 탭에서 수수료 계산과 노트를 쓸 수 있어요</p>
       </div>
     )
   }
@@ -195,13 +194,12 @@ function FeeCalc({ fee, hasInfo, onChange, onPullInfo }) {
         <div className="flex items-center justify-between gap-2">
           <p className="text-base font-extrabold text-fg">수수료 계산</p>
           <span className="flex-1" />
-          {hasInfo
-            ? <button onClick={onPullInfo}
-                className="rounded-full bg-primary-container px-3.5 py-2 text-xs font-semibold text-on-primary-container active:opacity-80">
-                매물 정보 다시 불러오기
-              </button>
-            : <span className="text-[11px] text-fg-hint">매물카드에서 &lsquo;AI 읽기&rsquo;를 하면 자동으로 채워져요</span>
-          }
+          {hasInfo && (
+            <button onClick={onPullInfo}
+              className="rounded-full bg-primary-container px-3.5 py-2 text-xs font-semibold text-on-primary-container active:opacity-80">
+              매물 정보 다시 불러오기
+            </button>
+          )}
           <button onClick={() => setOpen(false)}
             className="rounded-full bg-chip px-3.5 py-2 text-xs font-semibold text-fg-2 active:opacity-80">
             접기 ▴
@@ -216,7 +214,7 @@ function FeeCalc({ fee, hasInfo, onChange, onPullInfo }) {
 
         <div className="mt-3 rounded-xl bg-inset px-3.5 py-1">
           <div className="flex items-center justify-between border-b border-inset-line py-2 text-sm">
-            <span className="text-fg-2">환산보증금 <span className="text-[11px] text-fg-hint">(보증금+월세×100)</span></span>
+            <span className="text-fg-2">환산보증금</span>
             <span className="font-bold text-fg">{formatComma(converted) || 0}원</span>
           </div>
           <div className="flex items-center justify-between border-b border-inset-line py-2 text-sm">
@@ -245,7 +243,6 @@ function FeeCalc({ fee, hasInfo, onChange, onPullInfo }) {
             </span>
           </div>
         </div>
-        <p className="mt-1.5 text-right text-[11px] text-fg-hint">권리금 수수료: 4,000만 이하 일괄 200만 원 · 1억 미만 5% · 1억~2억 미만 4% · 2억 이상 3%</p>
       </div>
     </div>
   )

@@ -186,11 +186,7 @@ function CompletedContract({ done, onWriteNew }) {
               다운로드
             </button>
           </div>
-        ) : (
-          <p className="mt-4 rounded-xl bg-inset px-3.5 py-2.5 text-xs text-fg-2">
-            서명된 계약서 PDF는 전달·결제 탭의 <b>계약 목록 · 재전달</b>에서 상호로 검색해 받을 수 있어요.
-          </p>
-        )}
+        ) : null}
       </div>
 
       <button onClick={onWriteNew}

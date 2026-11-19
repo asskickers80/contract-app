@@ -10,7 +10,7 @@ import AdWorkTab from './screens/AdWorkTab.jsx'
 import { loadUi, saveUi, FRESH_LAUNCH } from './lib/uiState.js'
 import { initBackGuard } from './lib/backNav.js'
 import { patchCardBoard } from './lib/boardStore.js'
-import { hasIntranetPending, hasGoCapture } from './lib/intranetText.js'
+import { hasIntranetPending, hasCaptureImage } from './lib/intranetText.js'
 
 // [0 매물카드] [1 노트] [2 계약] [3 전달·결제]
 // 천하통일(인트라넷) 탭 완전 제거 (2026-07-11 대표님 결정)
@@ -20,7 +20,7 @@ export default function App() {
   const [unlocked, setUnlocked] = useState(sessionStorage.getItem('contract.unlocked') === '1')
   // 새 실행은 매물카드에서 시작, 사용 중 새로고침만 보던 탭 복원
   // 앱 밖 새 창에서 [이 매물 읽기]로 넘어온 경우도 매물카드에서 시작
-  const [active, setActive] = useState(() => (FRESH_LAUNCH || hasIntranetPending() || hasGoCapture() ? 0 : loadUi('tab', 0)))
+  const [active, setActive] = useState(() => (FRESH_LAUNCH || hasIntranetPending() || hasCaptureImage() ? 0 : loadUi('tab', 0)))
   const [activeCardKey, setActiveCardKey] = useState(null)
   const [contractResult, setContractResult] = useState(null)
   const [contractKey, setContractKey] = useState(0)
