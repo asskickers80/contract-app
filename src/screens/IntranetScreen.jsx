@@ -26,6 +26,15 @@ function normalizeUrl(u) {
 }
 
 export default function IntranetScreen({ onBack, onRead, busy }) {
+  // 새 창 방식: 'native' = 브라우저 그대로(새 창이 진짜 새 창으로 열림, 전산 본래 동작) / 'app' = 앱 안 창 탭으로 흉내
+  // 전산 팝업(주소검색·매물카드 저장 등)이 어느 쪽에서 되는지 현장에서 바로 바꿔 볼 수 있게 한다
+  const [mode, setModeState] = useState(() => {
+    try { return localStorage.getItem('contract.intranetMode') === 'app' ? 'app' : 'native' } catch { return 'native' }
+  })
+  window.__intranetMode = mode // 프록시 주입 스크립트가 문서를 불러올 때 읽는다
+  const [logOpen, setLogOpen] = useState(false)
+  const [logTick, setLogTick] = useState(0)
+  const [copied, setCopied] = useState(false)
   const [tabs, setTabsState] = useState([{ id: 1, src: '/', name: '' }])
   const [activeTab, setActiveTab] = useState(1)
   const nextId = useRef(2)
@@ -144,6 +153,46 @@ export default function IntranetScreen({ onBack, onRead, busy }) {
     removeTab(id, null)
   }
 
+  function switchMode(next) {
+    setModeState(next)
+    window.__intranetMode = next
+    try { localStorage.setItem('contract.intranetMode', next) } catch { /* 저장 불가 */ }
+    // 열려 있는 창을 새 방식으로 다시 불러온다
+    for (const t of tabsRef.current) {
+      const f = frameRefs.current[t.id]
+      try { if (f?.contentWindow && f.src !== 'about:blank') { markLoading(t.id, true); f.contentWindow.location.reload() } } catch { /* 무시 */ }
+    }
+  }
+
+  const logs = () => (Array.isArray(window.__intraLog) ? window.__intraLog : [])
+  const errCount = logs().filter(l => l.k === 'error').length
+  // 기록 패널이 열려 있는 동안 + 오류 표시를 위해 주기적으로 갱신
+  useEffect(() => {
+    const id = setInterval(() => setLogTick(n => n + 1), 1500)
+    return () => clearInterval(id)
+  }, [])
+  const fmtLog = l => {
+    const d = new Date(l.t)
+    const hh = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0')
+    return `${hh} [${l.k}] ${l.f} ${l.m}`.trim()
+  }
+  async function copyLogs() {
+    const head = `# 전산 기록 (${new Date().toLocaleString('ko-KR')}) 모드=${mode} 창=${tabsRef.current.length}\n# ${navigator.userAgent}\n`
+    const text = head + logs().slice(-120).map(fmtLog).join('\n')
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      document.body.appendChild(ta)
+      ta.select()
+      try { document.execCommand('copy') } catch { /* 무시 */ }
+      ta.remove()
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   function readPage() {
     let doc = null
     try {
@@ -157,7 +206,7 @@ export default function IntranetScreen({ onBack, onRead, busy }) {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
       <div className="flex items-center gap-2 px-4 py-2">
         <button onClick={onBack}
           className="rounded-full px-3 py-1.5 text-[13.5px] font-semibold text-fg-2 active:bg-chip">← 뒤로</button>
@@ -169,6 +218,18 @@ export default function IntranetScreen({ onBack, onRead, busy }) {
           }}
           aria-label="전산 새로고침"
           className="rounded-full bg-chip px-3 py-1.5 text-xs font-bold text-fg-2 active:opacity-80">↻</button>
+        <button
+          onClick={() => switchMode(mode === 'native' ? 'app' : 'native')}
+          aria-label="새 창 방식 전환"
+          className="rounded-full bg-chip px-3 py-1.5 text-xs font-bold text-fg-2 active:opacity-80">
+          새 창: {mode === 'native' ? '원본' : '앱 안'}
+        </button>
+        <button
+          onClick={() => setLogOpen(v => !v)}
+          aria-label="전산 기록"
+          className={`rounded-full px-3 py-1.5 text-xs font-bold active:opacity-80 ${errCount ? 'bg-danger-container text-on-danger-container' : 'bg-chip text-fg-2'}`}>
+          🛠 기록{errCount ? ` ${errCount}` : ''}
+        </button>
         <div className="flex-1" />
         <button onClick={readPage} disabled={busy}
           className="rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-on-primary active:opacity-90 disabled:opacity-50">
@@ -203,6 +264,21 @@ export default function IntranetScreen({ onBack, onRead, busy }) {
         </div>
       )}
 
+      {logOpen && (
+        <div className="absolute inset-x-0 bottom-0 z-40 flex max-h-[55%] flex-col rounded-t-2xl bg-card shadow-card">
+          <div className="flex items-center gap-2 px-4 py-2">
+            <p className="flex-1 text-sm font-extrabold text-fg">전산 기록 <span className="text-xs font-normal text-fg-hint">(저장이 안 넘어갈 때 [복사]해서 보내 주세요)</span></p>
+            <button onClick={copyLogs} className="rounded-full bg-primary px-3.5 py-1.5 text-xs font-bold text-on-primary active:opacity-90">{copied ? '✓ 복사됨' : '복사'}</button>
+            <button onClick={() => { if (Array.isArray(window.__intraLog)) window.__intraLog.length = 0; setLogTick(n => n + 1) }}
+              className="rounded-full bg-chip px-3 py-1.5 text-xs font-bold text-fg-2 active:opacity-80">지우기</button>
+            <button onClick={() => setLogOpen(false)} className="rounded-full bg-chip px-3 py-1.5 text-xs font-bold text-fg-2 active:opacity-80">닫기</button>
+          </div>
+          <pre key={logTick} className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-all px-4 pb-3 text-[11px] leading-snug text-fg-2">
+            {logs().length ? logs().slice(-80).map(fmtLog).join('\n') : '아직 기록이 없어요 — 전산에서 동작하면 여기에 쌓여요'}
+          </pre>
+        </div>
+      )}
+
       {/* 모든 창을 유지하고 보이는 것만 전환 (로그인 세션·보던 페이지 유지) */}
       <div className="relative min-h-0 flex-1">
         {tabs.map(t => (
@@ -211,6 +287,9 @@ export default function IntranetScreen({ onBack, onRead, busy }) {
             name={t.name || `__tab${t.id}`}
             ref={el => { if (el) frameRefs.current[t.id] = el }}
             src={t.src}
+            // 원본 모드: top-navigation 미허용 — 전산 스크립트의 top.location 이동(프레임 탈출)이 앱 전체를 갈아엎어 홈으로 돌아가는 것 방지
+            // 앱 안 모드에는 걸지 않는다: 샌드박스는 형제 창(이름 있는 팝업 탭) 조작도 막아 창 흉내가 깨진다
+            sandbox={mode === 'native' ? 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads' : undefined}
             onLoad={() => markLoading(t.id, false)}
             title={`회사 전산 창 ${t.id}`}
             className={`absolute inset-0 h-full w-full border-0 bg-white ${activeTab === t.id ? '' : 'invisible'}`}
