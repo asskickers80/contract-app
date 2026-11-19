@@ -206,7 +206,6 @@ export default function AdWorkTab({ cardKey, active }) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
         <p className="text-sm font-semibold text-fg-2">매물카드에서 카드를 먼저 열어주세요</p>
-        <p className="text-xs text-fg-hint">카드를 열면 추출된 매물 정보로 광고작성이 자동으로 채워져요</p>
       </div>
     )
   }
@@ -294,7 +293,6 @@ export default function AdWorkTab({ cardKey, active }) {
           <div className="mx-auto flex h-full max-w-2xl flex-col rounded-2xl bg-card p-4 shadow-card">
             <div className="flex shrink-0 items-center gap-2">
               <p className="text-base font-extrabold text-fg">매물광고</p>
-              <span className="text-[11px] text-fg-hint">자유롭게 수정 후 복사하세요</span>
               <span className="flex-1" />
               <button onClick={compose} disabled={!!busy}
                 className="h-9 rounded-full bg-opt-container px-4 text-xs font-bold text-on-opt-container active:opacity-80 disabled:opacity-40">
@@ -312,12 +310,12 @@ export default function AdWorkTab({ cardKey, active }) {
                   className="mt-3 min-h-0 flex-1 resize-none rounded-xl bg-inset p-4 text-[14px] leading-relaxed text-fg focus:outline-none focus:ring-2 focus:ring-primary" />
                 <button onClick={() => setView('write')}
                   className="mt-3 w-full shrink-0 rounded-full border border-line bg-card py-3 text-[13px] font-bold text-opt active:bg-chip">
-                  ← 광고작성으로 돌아가 수정 (수정 후 다시 [반영하기])
+                  ← 광고작성으로 돌아가 수정
                 </button>
               </>
             ) : (
               <p className="py-16 text-center text-sm text-fg-hint">
-                아직 작성된 광고가 없어요 — 광고작성에서 [반영하기]를 눌러 주세요
+                아직 작성된 광고가 없어요
               </p>
             )}
           </div>

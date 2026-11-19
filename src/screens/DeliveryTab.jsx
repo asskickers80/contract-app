@@ -11,19 +11,11 @@ import { copyText } from '../lib/share.js'
 export default function DeliveryTab({ result, onNewContract, onOpenCard }) {
   return (
     <div className="h-full overflow-y-auto">
-      {result ? (
-        <Complete result={result} onNewContract={onNewContract} />
-      ) : (
-        <div className="mx-auto mt-6 max-w-2xl px-4">
-          <p className="rounded-2xl bg-card px-4 py-6 text-center text-sm text-fg-hint shadow-card">
-            방금 완료된 계약이 없어요 — 계약 탭에서 서명이 끝나면 여기로 넘어옵니다.
-          </p>
-        </div>
-      )}
+      {result && <Complete result={result} onNewContract={onNewContract} />}
 
       {/* 작업 보관함 — 매물별 작업물 전체 */}
       <div className="mx-auto max-w-2xl px-4 pb-2 pt-6">
-        <h2 className="px-1 text-sm font-extrabold text-fg">작업 보관함 <span className="text-xs font-normal text-fg-hint">(매물별 캡처·메모·노트·수수료·광고)</span></h2>
+        <h2 className="px-1 text-sm font-extrabold text-fg">작업 보관함</h2>
       </div>
       <SyncBanner />
       <WorkArchive onOpenCard={onOpenCard} />
@@ -116,7 +108,7 @@ function WorkArchive({ onOpenCard }) {
       {loading && <p className="py-6 text-center text-sm text-fg-hint">불러오는 중…</p>}
       {!loading && boards.length === 0 && (
         <p className="rounded-2xl bg-card px-4 py-6 text-center text-sm text-fg-hint shadow-card">
-          저장된 작업이 없어요 — 매물카드 탭에서 캡처를 시작해 보세요.
+          저장된 작업이 없어요
         </p>
       )}
 

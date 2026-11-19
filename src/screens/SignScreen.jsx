@@ -68,18 +68,12 @@ export default function SignScreen({ draft, onDone }) {
       <div className="mx-auto mt-4 max-w-2xl space-y-4 px-4">
         <div className="text-center">
           <p className="text-base font-extrabold text-fg">계약 내용 확인 및 서명</p>
-          <p className="mt-0.5 text-xs text-fg-hint">iPad를 고객님께 전달해 주세요</p>
         </div>
         {/* 1. 계약서 전문 열람 (스크롤 게이트) + 설명용 펜 */}
         <div className="overflow-hidden rounded-2xl bg-card shadow-card">
           <div className="flex items-center gap-2 px-4 py-3">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-extrabold text-fg">1. 계약서를 끝까지 읽어 주세요</p>
-              <p className="text-xs text-fg-hint">
-                {penOn
-                  ? '펜슬로 계약서 위에 표시하며 설명하세요 — 화면 설명용이라 저장되는 계약서에는 안 들어가요'
-                  : '아래 상자를 맨 아래까지 스크롤하면 서명 칸이 열립니다.'}
-              </p>
             </div>
             {penOn && (
               <>
@@ -153,7 +147,6 @@ export default function SignScreen({ draft, onDone }) {
           className="w-full rounded-full bg-primary py-3.5 text-[15px] font-bold text-on-primary active:opacity-90 disabled:bg-off-bg disabled:text-off-fg">
           {busy ? 'PDF 생성·저장 중…' : '서명 완료'}
         </button>
-        {!scrolledToEnd && <p className="text-center text-xs text-fg-hint">계약서를 끝까지 읽으면 서명할 수 있어요.</p>}
       </div>
     </div>
   )

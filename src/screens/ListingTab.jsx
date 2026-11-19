@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import CaptureBoard from '../components/CaptureBoard.jsx'
-import { takeIntranetPending, hasIntranetPending, hasGoCapture, takeGoCapture } from '../lib/intranetText.js'
+import { takeIntranetPending, hasIntranetPending, takeCaptureImage, hasCaptureImage } from '../lib/intranetText.js'
 import { loadCardBoard, saveCardBoard, patchCardBoard, listCardBoards, deleteCardBoard, imageSig } from '../lib/boardStore.js'
 import SyncBanner from '../components/SyncBanner.jsx'
 import { formatPhone, formatComma, parseAmount, formatBizNo } from '../lib/format.js'
@@ -15,7 +15,7 @@ const newBoardKey = () => `cap-${Date.now()}`
 export default function ListingTab({ onActiveCard, active, openCardReq }) {
   // 사용 중 새로고침이면 보던 화면(라이브러리/캡처 뷰어) 복원, 새 실행이면 홈에서 시작
   const [view, setView] = useState(() => {
-    if (FRESH_LAUNCH || hasIntranetPending() || hasGoCapture()) return 'home' // 전산에서 읽기·캡처하러 돌아온 경우도 홈에서
+    if (FRESH_LAUNCH || hasIntranetPending() || hasCaptureImage()) return 'home' // 전산에서 읽기·캡처하고 돌아온 경우도 홈에서 시작
     const s = loadUi('listing')
     if (s?.view === 'viewer' && s.boardKey) return 'viewer'
     if (s?.view === 'library') return 'library'
@@ -164,6 +164,9 @@ export default function ListingTab({ onActiveCard, active, openCardReq }) {
   useEffect(() => {
     const p = takeIntranetPending()
     if (p) readIntranet(p.text)
+    // [캡처]를 눌러 돌아왔으면 사진 고르기 없이 바로 그 캡처를 읽는 단계(뷰어)로
+    const img = takeCaptureImage()
+    if (img) openNew(img)
   }, [])
 
   const overlay =
@@ -194,8 +197,6 @@ function HomeScreen({ onNew, onLibrary }) {
   // iOS 사진 선택창의 미리보기가 작아 어떤 캡처인지 알기 어려움 (2026-10-09 대표님 보고)
   // → 선택 직후 앱 안에서 크게 보여주고 확인 후 시작한다
   const [preview, setPreview] = useState(null)
-  // 전산 화면의 [캡처]로 돌아왔으면: 화면을 캡처한 뒤 바로 고르도록 안내
-  const [capGuide] = useState(() => takeGoCapture())
 
   // 전산 프록시(서버리스)를 미리 깨워 둔다 — 첫 전산 열기의 콜드 스타트 지연 완화 (페이지는 불러오지 않는 HEAD 한 번)
   useEffect(() => {
@@ -229,7 +230,6 @@ function HomeScreen({ onNew, onLibrary }) {
     <div className="flex min-h-full flex-col items-center justify-center gap-6 px-8 py-6">
       <div className="w-full max-w-sm"><SyncBanner /></div>
       <h1 className="text-2xl font-extrabold text-fg">캡처 뷰어</h1>
-      <p className="text-sm text-fg-hint">캡처 이미지에 포스트잇 메모를 붙여 보관하세요</p>
 
       <div className="flex w-full max-w-sm flex-col gap-4">
         <button
@@ -241,7 +241,6 @@ function HomeScreen({ onNew, onLibrary }) {
             <path d="M21.02 5H19V2.98c0-.54-.44-.98-.98-.98h-.03c-.55 0-.99.44-.99.98V5h-2.01c-.54 0-.98.44-.99.98v.03c0 .55.44.99.99.99H17v2.01c0 .54.44.99.99.98h.03c.54 0 .98-.44.98-.98V7h2.02c.54 0 .98-.44.98-.98v-.04c0-.54-.44-.98-.98-.98zM16 9.01V8h-1.01c-.53 0-1.03-.21-1.41-.58-.37-.38-.58-.88-.58-1.44 0-.36.1-.69.27-.98H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8.28c-.3.17-.64.28-1.02.28-1.09-.01-1.98-.9-1.98-1.99zM15.96 19H6.04c-.41 0-.65-.47-.4-.8l1.98-2.63c.21-.28.62-.26.82.02L10.22 18l2.61-3.48c.2-.26.59-.27.79-.01l2.75 3.69c.25.33.01.8-.41.8z"/>
           </svg>
           <span className="text-lg font-extrabold tracking-widest">NEW</span>
-          <span className="text-xs opacity-80">새로운 매물카드로 보드를 시작해요</span>
         </button>
 
         <button
@@ -250,7 +249,6 @@ function HomeScreen({ onNew, onLibrary }) {
         >
           <span className="text-4xl">📁</span>
           <span className="text-lg font-bold text-fg">불러오기</span>
-          <span className="text-xs text-fg-hint">저장된 캡처 보드를 이어서 편집해요</span>
         </button>
 
         <button
@@ -259,7 +257,6 @@ function HomeScreen({ onNew, onLibrary }) {
         >
           <span className="text-4xl">🖥️</span>
           <span className="text-lg font-bold text-fg">회사 전산</span>
-          <span className="text-xs text-fg-hint">전산에서 매물을 바로 읽어 캡처 없이 시작해요</span>
         </button>
       </div>
 
@@ -272,23 +269,6 @@ function HomeScreen({ onNew, onLibrary }) {
       />
 
       <p className="text-[11px] text-fg-disabled">버전 {__BUILD_TIME__} 빌드</p>
-
-      {capGuide && !preview && (
-        <div className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-surface px-8 text-center">
-          <p className="text-xl font-extrabold text-fg">📷 전산 화면 캡처</p>
-          <p className="text-sm leading-relaxed text-fg-2">
-            전산에서 캡처할 화면을 띄워 <b>전원 + 볼륨 올리기</b>로 화면을 캡처했다면<br />아래 버튼에서 방금 찍은 사진을 골라 주세요.
-          </p>
-          <button onClick={() => fileRef.current?.click()}
-            className="w-full max-w-xs rounded-full bg-primary py-4 text-base font-extrabold text-on-primary active:opacity-90">
-            사진에서 고르기
-          </button>
-          <button onClick={() => { window.location.href = '/__go' }}
-            className="w-full max-w-xs rounded-full bg-chip py-3 text-sm font-bold text-fg-2 active:opacity-80">
-            ← 전산으로 돌아가서 캡처하기
-          </button>
-        </div>
-      )}
 
       {/* 선택한 캡처 확인 — 사진 선택창 미리보기가 작아서, 여기서 크게 보고 시작한다 */}
       {preview && (
@@ -695,7 +675,7 @@ function CaptureViewer({ boardKey, initBoard, onBack, active }) {
       <div className="min-h-0 flex-1 px-4 pb-4 pt-1">
         {board?.image
           ? <CaptureBoard board={board} onBoardChange={setBoard} />
-          : <p className="py-8 text-center text-xs text-fg-hint">이미지 추가 버튼으로 사진첩에서 불러올 수 있어요</p>
+          : null
         }
       </div>
 
@@ -761,7 +741,6 @@ function InfoPanel({ info, setInfo, extracting, onReextract, onSave, onClose }) 
         <div className="flex shrink-0 items-center gap-2 px-4 py-3">
           <div className="min-w-0 flex-1">
             <p className="text-sm font-extrabold text-fg">매물 정보</p>
-            <p className="text-[11px] text-fg-hint">AI가 읽은 내용이에요 — 확인·수정 후 저장하세요</p>
           </div>
           <button onClick={onReextract} disabled={extracting}
             className="rounded-full bg-primary-container px-3.5 py-2 text-xs font-semibold text-on-primary-container active:opacity-80 disabled:opacity-40">
